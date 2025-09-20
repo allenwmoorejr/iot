@@ -85,9 +85,10 @@ spec:
         args:
           - |
             set -eux
-            ffmpeg -re -r 5 -f image2 -i http://camera-uploader.{{ .Values.namespace }}.svc.cluster.local/latest.jpg \
+            ffmpeg -re -r 5 -f image2 \
+              -i "http://camera-uploader.{{ .Values.namespace }}.svc.cluster.local/latest.jpg" \
               -vf "fps=5,format=yuv420p" \
-              -f rtsp rtsp://0.0.0.0:8554/porch
+              -f rtsp -listen 1 rtsp://0.0.0.0:8554/porch
         ports: [{containerPort: 8554, name: rtsp}]
 ---
 apiVersion: v1
