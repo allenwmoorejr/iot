@@ -19,7 +19,7 @@ spec:
           - |
             set -eux
             # RTSP pseudo-stream from refreshed JPEG
-            ffmpeg -re -r 5 -f image2 -i http://camera-uploader.suite.home.arpa/latest.jpg \
+            ffmpeg -re -r 5 -f image2 -i http://camera-uploader.suite.svc.cluster.local/latest.jpg \
               -vf "fps=5,format=yuv420p" \
               -f rtsp rtsp://0.0.0.0:8554/porch
         ports:
