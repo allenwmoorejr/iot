@@ -1,0 +1,130 @@
+# syntax=docker/dockerfile:1.7
+# camera-esp-relay: pulls from SOURCE_URL (ESP32-CAM/MJPEG/RTSP) and restreams via RTSP/RTMP/HLS/WebRTC
+# Works on amd64, arm64, and arm/v7 (Raspberry Pi 4/5)
+
+FROM alpine:3.20
+
+ARG MEDIAMTX_VERSION=1.9.9
+# Create non-root user early for reproducible ownership
+RUN addgroup -S app && adduser -S -G app app
+
+# Install minimal deps: curl for fetching binary, ca-certs for TLS, tini for clean signals
+RUN apk add --no-cache curl ca-certificates tzdata tini
+
+# Download MediaMTX static binary matching arch
+# (MediaMTX publishes multi-arch tarballs named mediamtx_${VER}_linux_${ARCH}.tar.gz)
+# Map Alpine arch to MediaMTX arch names
+ARG MEDIAMTX_VERSION=1.12.3
+ARG TARGETARCH
+
+# Robust fetch: tries multiple filename variants per arch (arm64 vs arm64v8, armv7 vs armv6)
+RUN set -eux; \
+  case "${TARGETARCH}" in \
+    amd64)  CANDIDATES="amd64" ;; \
+    arm64)  CANDIDATES="arm64 arm64v8" ;; \
+    arm)    CANDIDATES="armv7 armv6" ;; \
+    *) echo "Unsupported TARGETARCH=${TARGETARCH}"; exit 1 ;; \
+  esac; \
+  for MTX_ARCH in $CANDIDATES; do \
+    URL="https://github.com/bluenviron/mediamtx/releases/download/v${MEDIAMTX_VERSION}/mediamtx_v${MEDIAMTX_VERSION}_linux_${MTX_ARCH}.tar.gz"; \
+    echo "Trying $URL"; \
+    if curl -fsSL -o /tmp/mediamtx.tar.gz "$URL"; then \
+      tar -C /usr/local/bin -xzf /tmp/mediamtx.tar.gz mediamtx && FOUND=1 && break; \
+    fi; \
+  done; \
+  test "${FOUND:-0}" = "1" || { echo "No matching mediamtx archive found for ${TARGETARCH} in [$CANDIDATES]"; exit 1; }; \
+  rm -f /tmp/mediamtx.tar.gz; \
+  chmod +x /usr/local/bin/mediamtx
+
+# Default envs (override at run time)
+ENV SOURCE_URL="http://esp32-cam.local:81/stream" \
+    STREAM_PATH="cam" \
+    ENABLE_RTSP="true" \
+    ENABLE_RTMP="false" \
+    ENABLE_HLS="true" \
+    ENABLE_WEBRTC="true" \
+    RTSP_PORT="8554" \
+    RTMP_PORT="1935" \
+    HLS_PORT="8888" \
+    MTX_API="yes" \
+    MTX_METRICS="no" \
+    # If your source needs credentials, set them here or embed in the URL.
+    SOURCE_USER="" \
+    SOURCE_PASS="" \
+    # Optional: transcode MJPEG->H264 for better compatibility (uses CPU)
+    TRANSCODE_TO_H264="false" \
+    TZ="UTC"
+
+# Generate config from env vars on container start
+# MediaMTX can pull from HTTP MJPEG or RTSP and re-publish to several protocols.
+ADD --chown=app:app <<'EOF' /entrypoint.sh
+#!/bin/sh
+set -euo pipefail
+
+# Build mediamtx.yml dynamically
+cat >/app/mediamtx.yml <<YAML
+logLevel: info
+api: ${MTX_API}
+metrics: ${MTX_METRICS}
+
+rtsp: ${ENABLE_RTSP}
+rtspAddress: :${RTSP_PORT}
+
+rtmp: ${ENABLE_RTMP}
+rtmpAddress: :${RTMP_PORT}
+
+hls: ${ENABLE_HLS}
+hlsAddress: :${HLS_PORT}
+
+webrtc: ${ENABLE_WEBRTC}
+webrtcAddress: :8889
+webrtcServerKey: ""
+webrtcServerCert: ""
+
+paths:
+  ${STREAM_PATH}:
+    # If credentials provided, inject into URL when not already embedded
+    source: "$( \
+      if [ -n "${SOURCE_USER}${SOURCE_PASS}" ] && ! echo "${SOURCE_URL}" | grep -q '://[^/]*@'; then \
+        proto="$(echo "${SOURCE_URL}" | sed -E 's#^(.*)://.*#\\1#')" ; \
+        rest="$(echo "${SOURCE_URL}" | sed -E 's#^.*://(.*)$#\\1#')" ; \
+        echo "${proto}://${SOURCE_USER}:${SOURCE_PASS}@${rest}"; \
+      else \
+        echo "${SOURCE_URL}"; \
+      fi \
+    )"
+YAML
+
+# Optional transcode pipeline: MJPEG/variable formats -> H264/AAC for wider client support
+if [ "${TRANSCODE_TO_H264}" = "true" ]; then
+  cat >>/app/mediamtx.yml <<'YAML'
+    # Re-encode to H264/AAC via ffmpeg (requires ffmpeg in a custom image)
+    # Uncomment next line if you extend the image with ffmpeg:
+    # runOnInitRestart: yes
+    # runOnInit: |
+    #   ffmpeg -re -i $MTX_SOURCE -c:v libx264 -preset veryfast -tune zerolatency -pix_fmt yuv420p \
+    #          -c:a aac -ar 44100 -ac 2 -f rtsp rtsp://127.0.0.1:${RTSP_PORT}/${STREAM_PATH}
+YAML
+fi
+
+echo "[entrypoint] Generated /app/mediamtx.yml:"
+sed 's/^/[entrypoint]   /' /app/mediamtx.yml
+
+exec /sbin/tini -- mediamtx /app/mediamtx.yml
+EOF
+
+RUN chmod +x /entrypoint.sh && mkdir -p /app && chown -R app:app /app
+
+USER app
+WORKDIR /app
+
+# Expose typical ports (make sure to only publish the ones you enable)
+EXPOSE 8554/tcp 1935/tcp 8888/tcp 8889/tcp
+
+# Healthcheck uses the API if enabled
+HEALTHCHECK --interval=30s --timeout=3s --retries=5 CMD wget -qO- http://127.0.0.1:9997/v2/paths || exit 1
+
+ENTRYPOINT ["/entrypoint.sh"]
+
+
+

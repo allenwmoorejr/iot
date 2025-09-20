@@ -1,0 +1,18 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: mirror-ingress
+  namespace: suite
+  annotations:
+    traefik.ingress.kubernetes.io/router.entrypoints: web,websecure
+    traefik.ingress.kubernetes.io/router.middlewares: suite-suite-redirect-https@kubernetescrd
+spec:
+  ingressClassName: traefik
+  rules:
+    - host: mirror.suite.home.arpa
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service: { name: magicmirror-server, port: { number: 8080 } }

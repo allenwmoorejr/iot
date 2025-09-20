@@ -1,0 +1,26 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  creationTimestamp: null
+  labels:
+    app: inference
+  name: inference
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: inference
+  strategy: {}
+  template:
+    metadata:
+      creationTimestamp: null
+      labels:
+        app: inference
+    spec:
+      nodeSelector:
+        kubernetes.io/hostname: w0
+      containers:
+      - image: allenwayne/inference
+        name: inference
+        resources: {}
+status: {}

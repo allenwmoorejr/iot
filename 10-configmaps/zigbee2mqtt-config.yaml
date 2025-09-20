@@ -1,0 +1,18 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: zigbee2mqtt-config
+  namespace: suite
+data:
+  configuration.yaml: |
+    homeassistant: true
+    permit_join: false
+    serial:
+      port: /dev/serial/by-id/usb-ITEAD_SONOFF_Zigbee_3.0_USB_Dongle_Plus_V2_20231218150839-if00
+      adapter: ember
+    mqtt:
+      server: mqtt://mosquitto.suite.svc.cluster.local:1883
+      user: edge
+      password: edge
+    frontend:
+      port: 8081

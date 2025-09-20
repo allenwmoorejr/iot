@@ -1,0 +1,34 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: zigbee2mqtt
+  namespace: suite
+spec:
+  selector: { matchLabels: { app: zigbee2mqtt } }
+  replicas: 1
+  template:
+    metadata: { labels: { app: zigbee2mqtt } }
+    spec:
+      nodeSelector:
+        kubernetes.io/hostname: m2
+      containers:
+        - name: zigbee2mqtt
+          image: koenkk/zigbee2mqtt:latest
+          securityContext:
+            privileged: true
+          volumeMounts:
+            - { name: cfg, mountPath: /app/data/configuration.yaml, subPath: configuration.yaml }
+          ports: [{ containerPort: 8081, name: ui }]
+      volumes:
+        - name: cfg
+          configMap: { name: zigbee2mqtt-config }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: zigbee2mqtt
+  namespace: suite
+spec:
+  selector: { app: zigbee2mqtt }
+  ports:
+    - { name: ui, port: 8081, targetPort: 8081 }

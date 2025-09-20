@@ -1,0 +1,9 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: pihole-ui-override
+  namespace: suite
+data:
+  01-ui-host.conf: |
+    # Force UI hostname to Traefik Ingress VIP (loads before 02-*)
+    address=/pihole.suite.home.arpa/192.168.50.242

@@ -1,0 +1,29 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: netmon-scripts
+  namespace: suite
+data:
+  netmon.sh: |
+    #!/bin/sh
+    set -eu
+    HOST_IFACE="${IFACE:-eth0}"
+    TOPIC="${TOPIC:-net/w0/telemetry}"
+    BROKER="${BROKER:-mosquitto.suite.svc.cluster.local}"
+    USER="${MQTT_USER:-edge}"
+    PASS="${MQTT_PASS:-edge}"
+    prev_rx=$(cat /sys/class/net/$HOST_IFACE/statistics/rx_bytes)
+    prev_tx=$(cat /sys/class/net/$HOST_IFACE/statistics/tx_bytes)
+    while true; do
+      sleep 2
+      rx=$(cat /sys/class/net/$HOST_IFACE/statistics/rx_bytes)
+      tx=$(cat /sys/class/net/$HOST_IFACE/statistics/tx_bytes)
+      drx=$(( (rx - prev_rx) / 256 ))
+      dtx=$(( (tx - prev_tx) / 256 ))
+      prev_rx=$rx; prev_tx=$tx
+      ts=$(date +%s)
+      payload=$(printf '{"iface":"%s","rx_kbps":%.1f,"tx_kbps":%.1f,"ts":%s}
+' "$HOST_IFACE" "$drx" "$dtx" "$ts")
+      mosquitto_pub -h "$BROKER" -u "$USER" -P "$PASS" -t "$TOPIC" -m "$payload" || true
+      echo "$payload"
+    done

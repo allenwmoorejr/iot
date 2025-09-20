@@ -1,0 +1,25 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: scrypted
+  namespace: suite
+spec:
+  selector: { matchLabels: { app: scrypted } }
+  replicas: 1
+  template:
+    metadata: { labels: { app: scrypted } }
+    spec:
+      containers:
+        - name: scrypted
+          image: koush/scrypted:latest
+          ports: [{ containerPort: 11080, name: ui }]
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: scrypted
+  namespace: suite
+spec:
+  selector: { app: scrypted }
+  ports:
+    - { name: ui, port: 11080, targetPort: 11080 }

@@ -1,0 +1,60 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: micro-cam-relay
+  namespace: suite
+  labels: { app: micro-cam-relay }
+spec:
+  replicas: 1
+  selector: { matchLabels: { app: micro-cam-relay } }
+  template:
+    metadata: { labels: { app: micro-cam-relay } }
+    spec:
+      containers:
+      - name: ffmpeg
+        image: jrottenberg/ffmpeg:6-alpine
+        args:
+          - /bin/sh
+          - -lc
+          - |
+            set -eux
+            # RTSP pseudo-stream from refreshed JPEG
+            ffmpeg -re -r 5 -f image2 -i http://camera-uploader.suite.home.arpa/latest.jpg \
+              -vf "fps=5,format=yuv420p" \
+              -f rtsp rtsp://0.0.0.0:8554/porch
+        ports:
+        - containerPort: 8554
+          name: rtsp
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: micro-cam-relay
+  namespace: suite
+spec:
+  selector: { app: micro-cam-relay }
+  ports:
+    - name: rtsp
+      port: 8554
+      targetPort: 8554
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: micro-cam-relay
+  namespace: suite
+  annotations:
+    kubernetes.io/ingress.class: traefik
+    traefik.ingress.kubernetes.io/router.entrypoints: web
+spec:
+  rules:
+  - host: relay.suite.home.arpa
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: micro-cam-relay
+            port:
+              number: 8554

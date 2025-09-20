@@ -1,0 +1,39 @@
+apiVersion: traefik.containo.us/v1alpha1
+kind: Middleware
+metadata:
+  name: suite-redirect-https
+  namespace: suite
+spec:
+  redirectScheme:
+    scheme: https
+    permanent: true
+---
+apiVersion: traefik.containo.us/v1alpha1
+kind: Middleware
+metadata:
+  name: suite-allow-lan
+  namespace: suite
+spec:
+  ipWhiteList:
+    sourceRange:
+      - 192.168.50.0/24
+---
+apiVersion: traefik.containo.us/v1alpha1
+kind: Middleware
+metadata:
+  name: suite-security-headers
+  namespace: suite
+spec:
+  headers:
+    frameDeny: true
+    contentTypeNosniff: true
+    browserXssFilter: true
+    stsSeconds: 31536000
+---
+apiVersion: traefik.containo.us/v1alpha1
+kind: Middleware
+metadata:
+  name: suite-compress
+  namespace: suite
+spec:
+  compress: {}

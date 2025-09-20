@@ -1,0 +1,36 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mosquitto
+  namespace: suite
+spec:
+  selector: { matchLabels: { app: mosquitto } }
+  replicas: 1
+  template:
+    metadata: { labels: { app: mosquitto } }
+    spec:
+      nodeSelector:
+        kubernetes.io/hostname: w0
+      containers:
+        - name: broker
+          image: eclipse-mosquitto:2
+          ports: [{ containerPort: 1883, name: mqtt }]
+          volumeMounts:
+            - name: cfg
+              mountPath: /mosquitto/config/mosquitto.conf
+              subPath: mosquitto.conf
+      volumes:
+        - name: cfg
+          configMap: { name: mosquitto-conf }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: mosquitto
+  namespace: suite
+spec:
+  selector: { app: mosquitto }
+  ports:
+    - name: mqtt
+      port: 1883
+      targetPort: 1883

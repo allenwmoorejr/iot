@@ -1,0 +1,62 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: pihole
+  namespace: suite
+spec:
+  strategy: { type: Recreate }
+  selector: { matchLabels: { app: pihole } }
+  replicas: 1
+  template:
+    metadata: { labels: { app: pihole } }
+    spec:
+      nodeSelector:
+        kubernetes.io/arch: arm64
+        kubernetes.io/hostname: m2
+      containers:
+        - name: pihole
+          image: pihole/pihole:latest
+          env:
+            - { name: DNSMASQ_LISTENING, value: all }
+            - { name: ServerIP, value: "192.168.50.245" }
+            - { name: WEB_PORT, value: "80" }
+            - { name: PIHOLE_DNS_1, value: "1.1.1.1" }
+            - { name: PIHOLE_DNS_2, value: "9.9.9.9" }
+            - { name: DNSSEC, value: "false" }
+            - { name: TZ, value: America/Chicago }
+          ports:
+            - { containerPort: 53, name: dns-udp, protocol: UDP }
+            - { containerPort: 53, name: dns-tcp, protocol: TCP }
+            - { containerPort: 80, name: http }
+          volumeMounts:
+            - { name: etc-dnsmasq, mountPath: /etc/dnsmasq.d }
+            - { name: ui-override,  mountPath: /etc/dnsmasq.d/01-ui-host.conf, subPath: 01-ui-host.conf }
+            - { name: dnsmasq-cm,   mountPath: /etc/dnsmasq.d/02-suite-home-arpa.conf, subPath: 02-suite-home-arpa.conf }
+            - { name: dnsmasq-custom, mountPath: /etc/dnsmasq.d/03-custom.conf, subPath: 03-custom.conf }
+            - { name: etc-pihole,  mountPath: /etc/pihole }
+      volumes:
+        - name: etc-pihole
+          persistentVolumeClaim: { claimName: pihole-etc-pihole-pvc }
+        - name: etc-dnsmasq
+          persistentVolumeClaim: { claimName: pihole-dnsmasq-pvc }
+        - name: dnsmasq-cm
+          configMap: { name: pihole-dnsmasq }
+        - name: ui-override
+          configMap: { name: pihole-ui-override }
+        - name: dnsmasq-custom
+          configMap: { name: pihole-dnsmasq-custom }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: pihole
+  namespace: suite
+spec:
+  type: LoadBalancer
+  externalTrafficPolicy: Local
+  loadBalancerIP: 192.168.50.245
+  selector: { app: pihole }
+  ports:
+    - { name: dns-udp, port: 53, targetPort: 53, protocol: UDP, nodePort: 31173 }
+    - { name: dns-tcp, port: 53, targetPort: 53, protocol: TCP, nodePort: 31173 }
+    - { name: http, port: 80, targetPort: 80 }

@@ -1,0 +1,10 @@
+namespace: suite
+image:
+  repo: docker.io/allenwayne/camera-uploader
+  tag: latest
+storage:
+  size: 2Gi
+ingress:
+  domain: suite.home.arpa
+relay:
+  enabled: true

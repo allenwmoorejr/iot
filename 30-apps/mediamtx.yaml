@@ -1,0 +1,33 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mediamtx
+  namespace: suite
+spec:
+  selector: { matchLabels: { app: mediamtx } }
+  replicas: 1
+  template:
+    metadata: { labels: { app: mediamtx } }
+    spec:
+      nodeSelector:
+        kubernetes.io/hostname: w0
+      containers:
+        - name: mediamtx
+          image: bluenviron/mediamtx:1.14.0
+          ports:
+            - { containerPort: 8554, name: rtsp }
+            - { containerPort: 8888, name: hls }
+            - { containerPort: 8889, name: webrtc }
+          env: []
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: mediamtx
+  namespace: suite
+spec:
+  selector: { app: mediamtx }
+  ports:
+    - { name: rtsp, port: 8554, targetPort: 8554 }
+    - { name: hls,  port: 8888, targetPort: 8888 }
+    - { name: webrtc, port: 8889, targetPort: 8889 }

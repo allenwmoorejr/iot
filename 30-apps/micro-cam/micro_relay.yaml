@@ -1,0 +1,14 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: micro-cam-relay
+  namespace: suite
+spec:
+  selector: { app: micro-cam-relay }
+  type: NodePort
+  ports:
+  - name: rtsp
+    port: 8554
+    targetPort: 8554
+    nodePort: 30554
+

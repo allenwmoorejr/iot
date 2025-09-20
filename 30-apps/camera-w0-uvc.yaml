@@ -1,0 +1,19 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: camera-w0-uvc
+  namespace: suite
+spec:
+  selector: { matchLabels: { app: camera-w0-uvc } }
+  replicas: 1
+  template:
+    metadata: { labels: { app: camera-w0-uvc } }
+    spec:
+      nodeSelector:
+        kubernetes.io/hostname: w0
+      containers:
+        - name: cam
+          image: ghcr.io/allenwayne/uvc-rtsp:latest
+          env:
+            - { name: RTSP_URL, value: "rtsp://0.0.0.0:8554/cam-w0" }
+          securityContext: { privileged: true }

@@ -1,0 +1,30 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: serial2mqtt-w0
+  namespace: suite
+spec:
+  selector: { matchLabels: { app: serial2mqtt-w0 } }
+  replicas: 1
+  template:
+    metadata: { labels: { app: serial2mqtt-w0 } }
+    spec:
+      nodeSelector:
+        kubernetes.io/hostname: w0
+      containers:
+        - name: serial2mqtt
+          image: ghcr.io/allenwayne/serial2mqtt:latest
+          securityContext: { privileged: true }
+          env:
+            - name: SERIAL_PATH
+              value: /dev/serial/by-id/usb-MicroPython_Board_in_FS_mode_50353374aa965f18-if00
+            - { name: BAUD, value: "115200" }
+            - { name: MQTT_URL, value: mqtt://mosquitto.suite.svc.cluster.local:1883 }
+            - { name: MQTT_TOPIC, value: micropython/w0/telemetry }
+            - { name: MQTT_USER, value: edge }
+            - { name: MQTT_PASS, value: edge }
+          volumeMounts:
+            - { name: dev, mountPath: /dev }
+      volumes:
+        - name: dev
+          hostPath: { path: /dev }

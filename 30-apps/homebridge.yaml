@@ -1,0 +1,41 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: homebridge
+  namespace: suite
+spec:
+  selector: { matchLabels: { app: homebridge } }
+  replicas: 1
+  template:
+    metadata: { labels: { app: homebridge } }
+    spec:
+      nodeSelector:
+        homekit: bridge
+      containers:
+        - name: homebridge
+          image: homebridge/homebridge:latest
+          env:
+            - { name: TZ, value: America/Chicago }
+            - { name: HOMEBRIDGE_CONFIG_UI, value: "1" }
+            - { name: HOMEBRIDGE_CONFIG_UI_PORT, value: "8581" }
+            - { name: HOMEBRIDGE_CONFIG_UI_HOST, value: "0.0.0.0" }
+            - { name: HOMEBRIDGE_DISABLE_IPV6, value: "1" }
+            - { name: NODE_OPTIONS, value: "--dns-result-order=ipv4first" }
+          ports:
+            - { containerPort: 8581, name: ui }
+            - { containerPort: 51443, name: hap }
+          volumeMounts:
+            - { name: data, mountPath: /homebridge }
+      volumes:
+        - name: data
+          persistentVolumeClaim: { claimName: homebridge-data }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: homebridge
+  namespace: suite
+spec:
+  selector: { app: homebridge }
+  ports:
+    - { name: ui, port: 8581, targetPort: 8581 }

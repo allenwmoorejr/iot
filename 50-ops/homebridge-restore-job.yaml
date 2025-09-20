@@ -1,0 +1,31 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: homebridge-restore
+  namespace: suite
+spec:
+  template:
+    spec:
+      restartPolicy: OnFailure
+      containers:
+        - name: restore
+          image: alpine:3.20
+          command: ["/bin/sh","-lc"]
+          args:
+            - |
+              set -eux
+              ls -la /backups || true
+              LATEST=$(ls -1t /backups/homebridge-*.tgz 2>/dev/null | head -n1 || true)
+              if [ -z "$LATEST" ]; then
+                echo "ERROR: no backup tarball found in /backups"; exit 2
+              fi
+              echo "Restoring $LATEST"
+              rm -rf /homebridge/*
+              tar -xzf "$LATEST" -C /homebridge
+              echo "Restore complete."
+          volumeMounts:
+            - { name: hb, mountPath: /homebridge }
+            - { name: bkp, mountPath: /backups }
+      volumes:
+        - { name: hb,  persistentVolumeClaim: { claimName: homebridge-data } }
+        - { name: bkp, persistentVolumeClaim: { claimName: homebridge-backups } }

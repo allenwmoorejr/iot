@@ -1,0 +1,118 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: {{ .Values.namespace }}
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: camera-uploader-pvc
+  namespace: {{ .Values.namespace }}
+spec:
+  accessModes: ["ReadWriteOnce"]
+  resources:
+    requests:
+      storage: {{ .Values.storage.size }}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: camera-uploader
+  namespace: {{ .Values.namespace }}
+  labels: { app: camera-uploader }
+spec:
+  replicas: 1
+  selector: { matchLabels: { app: camera-uploader } }
+  template:
+    metadata: { labels: { app: camera-uploader } }
+    spec:
+      containers:
+      - name: web
+        image: {{ .Values.image.repo }}:{{ .Values.image.tag }}
+        ports: [{containerPort: 80}]
+        volumeMounts:
+          - { name: data, mountPath: /data }
+      volumes:
+      - name: data
+        persistentVolumeClaim: { claimName: camera-uploader-pvc }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: camera-uploader
+  namespace: {{ .Values.namespace }}
+spec:
+  selector: { app: camera-uploader }
+  ports:
+    - { name: http, port: 80, targetPort: 80 }
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: camera-uploader
+  namespace: {{ .Values.namespace }}
+  annotations:
+    kubernetes.io/ingress.class: traefik
+spec:
+  rules:
+  - host: camera-uploader.{{ .Values.ingress.domain }}
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service: { name: camera-uploader, port: { number: 80 } }
+---
+{{- if .Values.relay.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: micro-cam-relay
+  namespace: {{ .Values.namespace }}
+  labels: { app: micro-cam-relay }
+spec:
+  replicas: 1
+  selector: { matchLabels: { app: micro-cam-relay } }
+  template:
+    metadata: { labels: { app: micro-cam-relay } }
+    spec:
+      containers:
+      - name: ffmpeg
+        image: jrottenberg/ffmpeg:6-alpine
+        args:
+          - /bin/sh
+          - -lc
+          - |
+            set -eux
+            ffmpeg -re -r 5 -f image2 -i http://camera-uploader.{{ .Values.namespace }}.svc.cluster.local/latest.jpg \
+              -vf "fps=5,format=yuv420p" \
+              -f rtsp rtsp://0.0.0.0:8554/porch
+        ports: [{containerPort: 8554, name: rtsp}]
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: micro-cam-relay
+  namespace: {{ .Values.namespace }}
+spec:
+  selector: { app: micro-cam-relay }
+  ports:
+    - { name: rtsp, port: 8554, targetPort: 8554 }
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: micro-cam-relay
+  namespace: {{ .Values.namespace }}
+  annotations:
+    kubernetes.io/ingress.class: traefik
+spec:
+  rules:
+  - host: relay.{{ .Values.ingress.domain }}
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service: { name: micro-cam-relay, port: { number: 8554 } }
+{{- end }}

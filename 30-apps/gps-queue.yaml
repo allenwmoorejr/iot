@@ -1,0 +1,78 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: gps-queue
+  name: gps-queue
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: gps-queue
+  template:
+    metadata:
+      labels:
+        app: gps-queue
+    spec:
+      nodeSelector:
+        kubernetes.io/hostname: w0
+      initContainers:
+      - image: busybox:1.34
+        name: init-gps-queue
+        command: ['sh', '-c', "echo '-1' >> /tmp/gps"]
+        securityContext:
+          #privileged: true
+          runAsUser: 1
+        volumeMounts:
+        - name: tmp
+          mountPath: /tmp
+      containers:
+      - image: allenwayne/gps_queue
+        name: gps-queue
+        imagePullPolicy: Always
+        env:
+        - name: DEVICE
+          value: "/dev/ttyACM1"
+        securityContext:
+          privileged: true
+          capabilities:
+            add: ["SYS_ADMIN"]
+        volumeMounts:
+        - mountPath: /dev
+          name: dev-volume
+        - name: tmp
+          mountPath: /tmp
+      - image: allenwayne/gps_api
+        name: gps-api
+        ports:
+        - containerPort: 3000
+        imagePullPolicy: Always
+        env:
+        - name: ENDPOINT
+          value: "http://192.168.50.244:5000"
+        securityContext:
+          runAsUser: 1
+        volumeMounts:
+        - name: tmp
+          mountPath: /tmp
+      - image: curlimages/curl
+        name: sync-traffic-events
+        env:
+        - name: URL
+          value: "http://localhost:3000/traffic"
+        - name: DELAY
+          value: "30"
+        command: [ "sh", "-c"]
+        args:
+        - while :; do
+            curl ${URL};
+            sleep ${DELAY};
+          done;
+      volumes:
+      - name: dev-volume
+        hostPath:
+          path: /dev
+          type: Directory
+      - name: tmp
+        emptyDir: {}
+status: {}

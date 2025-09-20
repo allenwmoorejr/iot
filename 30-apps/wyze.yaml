@@ -1,0 +1,29 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: wyze
+  namespace: suite
+spec:
+  selector: { matchLabels: { app: wyze } }
+  replicas: 1
+  template:
+    metadata: { labels: { app: wyze } }
+    spec:
+      nodeSelector:
+        kubernetes.io/hostname: w2
+      containers:
+        - name: wyze
+          image: ghcr.io/mrlt8/wyze-bridge:latest
+          ports: [{ containerPort: 8554, name: rtsp }]
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: wyze
+  namespace: suite
+spec:
+  type: LoadBalancer
+  loadBalancerIP: 192.168.50.243
+  selector: { app: wyze }
+  ports:
+    - { name: rtsp, port: 8554, targetPort: 8554 }

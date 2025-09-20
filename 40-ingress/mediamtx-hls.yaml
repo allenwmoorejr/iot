@@ -1,0 +1,14 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: mediamtx-hls
+  namespace: suite
+spec:
+  ingressClassName: traefik
+  rules:
+    - host: hls.suite.home.arpa
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend: { service: { name: mediamtx, port: { number: 8888 } } }

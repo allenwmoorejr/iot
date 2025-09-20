@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: hb-merge-snip
+  namespace: suite
+data:
+  snippet.json: |
+    {
+      "bridge": { "name": "Homebridge 9C89", "port": 51564 },
+      "accessories": [],
+      "platforms": []
+    }

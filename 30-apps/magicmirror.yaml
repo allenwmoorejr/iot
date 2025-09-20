@@ -1,0 +1,79 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: magicmirror-server
+  namespace: suite
+spec:
+  strategy: { type: Recreate }
+  selector: { matchLabels: { app: magicmirror-server } }
+  replicas: 1
+  template:
+    metadata: { labels: { app: magicmirror-server } }
+    spec:
+      nodeSelector:
+        kubernetes.io/hostname: m3
+      initContainers:
+        - name: seed-modules
+          image: docker.io/allenwayne/magicmirror-server:2.32
+          command: ["/bin/sh","-lc"]
+          args:
+            - |
+              set -eux
+              rm -rf /work/modules/* /work/public/* || true
+              if [ -d /opt/magic_mirror/modules ]; then
+                cp -a /opt/magic_mirror/modules/. /work/modules/
+              fi
+              if [ -d /opt/magic_mirror/public ]; then
+                cp -a /opt/magic_mirror/public/. /work/public/
+              fi
+          volumeMounts:
+            - { name: mm-modules, mountPath: /work/modules }
+            - { name: mm-public,  mountPath: /work/public }
+        - name: git-modules
+          image: alpine:3.20
+          command: ["/bin/sh","-lc"]
+          args: ["echo skipping git-modules; exit 0"]
+          volumeMounts:
+            - { name: mm-modules, mountPath: /work/modules }
+            - { name: mm-public,  mountPath: /work/public }
+            - { name: mm-extras,  mountPath: /extras }
+      containers:
+        - name: magicmirror
+          image: docker.io/allenwayne/magicmirror-server:2.32
+          command: ["/bin/sh","-lc"]
+          args: ["npm run server"]
+          env:
+            - { name: TZ, value: America/Chicago }
+            - name: OPENWEATHER_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: openweather
+                  key: API_KEY
+          ports: [{ containerPort: 8080 }]
+          livenessProbe:
+            httpGet: { path: "/", port: 8080 }
+            initialDelaySeconds: 30
+            periodSeconds: 20
+          volumeMounts:
+            - { name: mm-config,  mountPath: /opt/magic_mirror/config/config.js, subPath: config.js }
+            - { name: mm-modules, mountPath: /opt/magic_mirror/modules }
+            - { name: mm-public,  mountPath: /opt/magic_mirror/public }
+      volumes:
+        - name: mm-config
+          configMap: { name: magicmirror-config }
+        - name: mm-modules
+          emptyDir: {}
+        - name: mm-public
+          emptyDir: {}
+        - name: mm-extras
+          configMap: { name: magicmirror-extras }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: magicmirror-server
+  namespace: suite
+spec:
+  selector: { app: magicmirror-server }
+  ports:
+    - { port: 8080, targetPort: 8080 }

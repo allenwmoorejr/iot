@@ -1,0 +1,40 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: magicmirror-config
+  namespace: suite
+data:
+  config.js: |
+    let config = {
+      address: "0.0.0.0",
+      port: 8080,
+      ipWhitelist: [],
+      language: "en",
+      timeFormat: 12,
+      units: "imperial",
+      modules: [
+        { module: "clock", position: "top_left" },
+        { module: "calendar", position: "top_left",
+          config: { calendars: [{ symbol: "calendar", url: "webcal://example.com/your.ics" }] } },
+        { module: "weather", position: "top_right",
+          config: { weatherProvider: "openweathermap", type: "current",
+                    apiKey: process.env.OPENWEATHER_API_KEY, location: "Chicago" } },
+        { module: "weather", position: "top_right", header: "Forecast",
+          config: { weatherProvider: "openweathermap", type: "forecast",
+                    apiKey: process.env.OPENWEATHER_API_KEY, location: "Chicago" } },
+        { module: "MMM-MQTT", position: "top_right",
+          config: {
+            mqttServer: "mqtt://mosquitto.suite.svc.cluster.local:1883",
+            mqttUser: "edge",
+            mqttPassword: "edge",
+            subscriptions: [
+              { topic: "net/w0/telemetry", label: "w0 RX kb/s", jsonpointer: "$.rx_kbps" },
+              { topic: "net/w0/telemetry", label: "w0 TX kb/s", jsonpointer: "$.tx_kbps" }
+            ]
+          }
+        },
+        { module: "MMM-HTMLBox", position: "bottom_left",
+          config: { html: "<div style='font-size:20px'>Welcome back 👋</div>" } }
+      ]
+    };
+    if (typeof module !== "undefined") { module.exports = config; }
