@@ -79,9 +79,10 @@ spec:
       containers:
       - name: ffmpeg
         image: jrottenberg/ffmpeg:6-alpine
-        args:
+        command:
           - /bin/sh
-          - -lc
+          - -c
+        args:
           - |
             set -eux
             ffmpeg -re -r 5 -f image2 -i http://camera-uploader.{{ .Values.namespace }}.svc.cluster.local/latest.jpg \

@@ -13,9 +13,10 @@ spec:
       containers:
       - name: ffmpeg
         image: jrottenberg/ffmpeg:6-alpine
-        args:
+        command:
           - /bin/sh
-          - -lc
+          - -c
+        args:
           - |
             set -eux
             # RTSP pseudo-stream from refreshed JPEG
