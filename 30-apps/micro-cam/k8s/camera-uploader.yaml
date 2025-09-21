@@ -5,10 +5,10 @@ metadata:
   namespace: suite
 spec:
   accessModes: ["ReadWriteOnce"]
+  # storageClassName: longhorn   # uncomment after Longhorn install
   resources:
     requests:
       storage: 2Gi
-  storageClassName: local-path
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -23,23 +23,20 @@ spec:
     metadata: { labels: { app: camera-uploader } }
     spec:
       nodeSelector:
-        kubernetes.io/hostname: m3
+        kubernetes.io/hostname: m3   # keep co-located with its local PV for now
       containers:
       - name: web
         image: docker.io/allenwayne/camera-uploader:latest
-        ports:
-        - containerPort: 80
+        ports: [{ containerPort: 80 }]
         readinessProbe:
           httpGet: { path: /healthz, port: 80 }
           initialDelaySeconds: 5
           periodSeconds: 5
         volumeMounts:
-        - name: data
-          mountPath: /data
+          - { name: data, mountPath: /data }
       volumes:
       - name: data
-        persistentVolumeClaim:
-          claimName: camera-uploader-pvc
+        persistentVolumeClaim: { claimName: camera-uploader-pvc }
 ---
 apiVersion: v1
 kind: Service
@@ -49,9 +46,7 @@ metadata:
 spec:
   selector: { app: camera-uploader }
   ports:
-    - name: http
-      port: 80
-      targetPort: 80
+    - { name: http, port: 80, targetPort: 80 }
 ---
 apiVersion: networking.k8s.io/v1
 kind: Ingress
@@ -68,7 +63,4 @@ spec:
       - path: /
         pathType: Prefix
         backend:
-          service:
-            name: camera-uploader
-            port:
-              number: 80
+          service: { name: camera-uploader, port: { number: 80 } }

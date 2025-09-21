@@ -1,0 +1,14 @@
+apiVersion: helm.cattle.io/v1
+kind: HelmChartConfig
+metadata:
+  name: traefik
+  namespace: kube-system
+spec:
+  valuesContent: |-
+    additionalArguments:
+      - "--entrypoints.rtsp.address=:8554/tcp"
+    ports:
+      rtsp:
+        port: 8554
+        expose: true
+        protocol: TCP
