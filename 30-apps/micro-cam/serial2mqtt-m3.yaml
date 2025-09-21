@@ -1,0 +1,54 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: serial2mqtt-m3
+  namespace: suite
+  labels: { app: serial2mqtt-m3 }
+spec:
+  replicas: 1
+  selector: { matchLabels: { app: serial2mqtt-m3 } }
+  template:
+    metadata: { labels: { app: serial2mqtt-m3 } }
+    spec:
+      nodeSelector:
+        kubernetes.io/hostname: m3
+      containers:
+      - name: serial2mqtt
+        image: python:3.12-alpine
+        securityContext:
+          privileged: true
+        command: ["/bin/sh","-c"]
+        args:
+          - |
+            pip install --no-cache-dir paho-mqtt pyserial && \
+            python - <<'PY'
+            import os, serial, paho.mqtt.client as mqtt
+            port  = os.environ.get("SERIAL_PORT","/dev/serial/by-id/usb-Arduino_UNO_WiFi_R4_CMSIS-DAP_34B7DA636CFC-if01")
+            baud  = int(os.environ.get("SERIAL_BAUD","115200"))
+            host  = os.environ.get("MQTT_HOST","mosquitto.suite.svc.cluster.local")
+            topic = os.environ.get("MQTT_TOPIC","micro-cam/serial")
+            s = serial.Serial(port, baud, timeout=1)
+            c = mqtt.Client(client_id="serial2mqtt-m3")
+            c.connect(host, 1883, 60)
+            while True:
+              line = s.readline().decode(errors="ignore").strip()
+              if line:
+                c.publish(topic, line, qos=0, retain=False)
+            PY
+        env:
+          - { name: SERIAL_PORT, value: "/dev/serial/by-id/usb-Arduino_UNO_WiFi_R4_CMSIS-DAP_34B7DA636CFC-if01" }
+          - { name: SERIAL_BAUD, value: "115200" }
+          - { name: MQTT_HOST,  value: "mosquitto.suite.svc.cluster.local" }
+          - { name: MQTT_TOPIC, value: "micro-cam/serial" }
+        volumeMounts:
+          - name: devtty
+            mountPath: /dev/serial/by-id/usb-Arduino_UNO_WiFi_R4_CMSIS-DAP_34B7DA636CFC-if01
+        resources:
+          requests: { cpu: "50m", memory: "64Mi" }
+          limits:   { cpu: "200m", memory: "128Mi" }
+      volumes:
+        - name: devtty
+          hostPath:
+            path: /dev/serial/by-id/usb-Arduino_UNO_WiFi_R4_CMSIS-DAP_34B7DA636CFC-if01
+            type: CharDevice
+

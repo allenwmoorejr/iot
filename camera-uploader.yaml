@@ -1,0 +1,67 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: camera-uploader-pvc
+  namespace: suite
+spec:
+  accessModes: ["ReadWriteOnce"]
+  # storageClassName: longhorn   # uncomment & switch after Longhorn install
+  resources:
+    requests:
+      storage: 2Gi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: camera-uploader
+  namespace: suite
+  labels: { app: camera-uploader }
+spec:
+  replicas: 1
+  selector: { matchLabels: { app: camera-uploader } }
+  template:
+    metadata: { labels: { app: camera-uploader } }
+    spec:
+      nodeSelector:
+        kubernetes.io/hostname: m3      # keep with its PV until you move to Longhorn
+      containers:
+      - name: web
+        image: docker.io/allenwayne/camera-uploader:latest
+        ports: [{ containerPort: 80 }]
+        readinessProbe:
+          httpGet: { path: /healthz, port: 80 }
+          initialDelaySeconds: 5
+          periodSeconds: 5
+        volumeMounts:
+          - { name: data, mountPath: /data }
+      volumes:
+      - name: data
+        persistentVolumeClaim: { claimName: camera-uploader-pvc }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: camera-uploader
+  namespace: suite
+spec:
+  selector: { app: camera-uploader }
+  ports:
+    - { name: http, port: 80, targetPort: 80 }
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: camera-uploader
+  namespace: suite
+  annotations:
+    kubernetes.io/ingress.class: traefik
+spec:
+  rules:
+  - host: camera-uploader.suite.home.arpa
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service: { name: camera-uploader, port: { number: 80 } }
+

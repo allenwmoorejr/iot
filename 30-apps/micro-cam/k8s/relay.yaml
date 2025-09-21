@@ -10,23 +10,21 @@ spec:
   template:
     metadata: { labels: { app: micro-cam-relay } }
     spec:
+      # k8s/relay.yaml (snippet)
       containers:
       - name: ffmpeg
-        image: jrottenberg/ffmpeg:6-alpine
-        command:
-          - /bin/sh
-          - -c
+        image: lscr.io/linuxserver/ffmpeg:latest
         args:
+          - /bin/sh
+          - -lc
           - |
             set -eux
-            # RTSP pseudo-stream from refreshed JPEG
-            ffmpeg -re -r 5 -f image2 \
-              -i "http://camera-uploader.suite.svc.cluster.local/latest.jpg" \
+            ffmpeg -re -r 5 -f image2 -i http://camera-uploader.suite.home.arpa/latest.jpg \
               -vf "fps=5,format=yuv420p" \
-              -f rtsp -listen 1 rtsp://0.0.0.0:8554/porch
+              -f rtsp rtsp://0.0.0.0:8554/porch
         ports:
-        - containerPort: 8554
-          name: rtsp
+          - containerPort: 8554
+            name: rtsp
 ---
 apiVersion: v1
 kind: Service

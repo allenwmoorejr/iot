@@ -1,0 +1,1175 @@
+Name:                   camera-esp32-relay
+Namespace:              suite
+CreationTimestamp:      Thu, 18 Sep 2025 19:40:50 -0500
+Labels:                 app=camera-esp32-relay
+Annotations:            deployment.kubernetes.io/revision: 15
+Selector:               app=camera-esp32-relay
+Replicas:               1 desired | 1 updated | 1 total | 1 available | 0 unavailable
+StrategyType:           RollingUpdate
+MinReadySeconds:        0
+RollingUpdateStrategy:  25% max unavailable, 25% max surge
+Pod Template:
+  Labels:       app=camera-esp32-relay
+  Annotations:  kubectl.kubernetes.io/restartedAt: 2025-09-19T12:06:04-05:00
+  Containers:
+   relay:
+    Image:       allenwayne/camera-esp-relay:latest
+    Ports:       8554/TCP, 8888/TCP, 8889/TCP, 9997/TCP
+    Host Ports:  0/TCP, 0/TCP, 0/TCP, 0/TCP
+    Limits:
+      cpu:     1
+      memory:  512Mi
+    Requests:
+      cpu:      50m
+      memory:   64Mi
+    Readiness:  tcp-socket :9997 delay=3s timeout=1s period=5s #success=1 #failure=3
+    Environment:
+      SOURCE_URL:     https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8
+      STREAM_PATH:    cam-esp32
+      ENABLE_RTSP:    true
+      ENABLE_HLS:     true
+      ENABLE_WEBRTC:  true
+      MTX_API:        yes
+      MTX_METRICS:    no
+      TZ:             America/Chicago
+    Mounts:
+      /app from app (rw)
+  Volumes:
+   app:
+    Type:          EmptyDir (a temporary directory that shares a pod's lifetime)
+    Medium:        
+    SizeLimit:     <unset>
+  Node-Selectors:  <none>
+  Tolerations:     <none>
+Conditions:
+  Type           Status  Reason
+  ----           ------  ------
+  Progressing    True    NewReplicaSetAvailable
+  Available      True    MinimumReplicasAvailable
+OldReplicaSets:  camera-esp32-relay-6c87f44587 (0/0 replicas created), camera-esp32-relay-57f87ff6c6 (0/0 replicas created), camera-esp32-relay-bd475c48f (0/0 replicas created), camera-esp32-relay-698595f4f (0/0 replicas created), camera-esp32-relay-867b474944 (0/0 replicas created)
+NewReplicaSet:   camera-esp32-relay-65c985fdb9 (1/1 replicas created)
+Events:          <none>
+
+
+Name:                   camera-uploader
+Namespace:              suite
+CreationTimestamp:      Fri, 19 Sep 2025 10:30:36 -0500
+Labels:                 app=camera-uploader
+Annotations:            deployment.kubernetes.io/revision: 2
+Selector:               app=camera-uploader
+Replicas:               1 desired | 1 updated | 2 total | 0 available | 2 unavailable
+StrategyType:           RollingUpdate
+MinReadySeconds:        0
+RollingUpdateStrategy:  25% max unavailable, 25% max surge
+Pod Template:
+  Labels:  app=camera-uploader
+  Containers:
+   web:
+    Image:        docker.io/allenwayne/camera-uploader:latest
+    Port:         80/TCP
+    Host Port:    0/TCP
+    Readiness:    http-get http://:80/healthz delay=5s timeout=1s period=5s #success=1 #failure=3
+    Environment:  <none>
+    Mounts:
+      /data from data (rw)
+  Volumes:
+   data:
+    Type:          PersistentVolumeClaim (a reference to a PersistentVolumeClaim in the same namespace)
+    ClaimName:     camera-uploader-pvc
+    ReadOnly:      false
+  Node-Selectors:  kubernetes.io/hostname=m3
+  Tolerations:     <none>
+Conditions:
+  Type           Status  Reason
+  ----           ------  ------
+  Available      False   MinimumReplicasUnavailable
+  Progressing    False   ProgressDeadlineExceeded
+OldReplicaSets:  camera-uploader-5d66c59bfb (1/1 replicas created)
+NewReplicaSet:   camera-uploader-7f48df5955 (1/1 replicas created)
+Events:          <none>
+
+
+Name:                   camera-w0-uvc
+Namespace:              suite
+CreationTimestamp:      Fri, 12 Sep 2025 07:53:26 -0500
+Labels:                 <none>
+Annotations:            deployment.kubernetes.io/revision: 1
+Selector:               app=camera-w0-uvc
+Replicas:               1 desired | 1 updated | 1 total | 1 available | 0 unavailable
+StrategyType:           RollingUpdate
+MinReadySeconds:        0
+RollingUpdateStrategy:  25% max unavailable, 25% max surge
+Pod Template:
+  Labels:  app=camera-w0-uvc
+  Containers:
+   ffmpeg:
+    Image:      lscr.io/linuxserver/ffmpeg:latest
+    Port:       <none>
+    Host Port:  <none>
+    Command:
+      /bin/sh
+      -lc
+    Args:
+      set -eux
+      ffmpeg -f v4l2 -input_format yuyv422 -framerate 15 -video_size 640x480 -i "$IN_DEV" \
+        -vf format=yuv420p -c:v libx264 -preset veryfast -tune zerolatency \
+        -g 30 -keyint_min 30 -f rtsp -rtsp_transport tcp "$OUT_URL"
+      
+    Environment:
+      IN_DEV:   /dev/video0
+      OUT_URL:  rtsp://mediamtx.suite.svc.cluster.local:8554/cam-w0
+      USE_HW:   0
+    Mounts:
+      /dev/video0 from video0 (rw)
+  Volumes:
+   video0:
+    Type:          HostPath (bare host directory volume)
+    Path:          /dev/video0
+    HostPathType:  CharDevice
+  Node-Selectors:  kubernetes.io/hostname=w0
+  Tolerations:     <none>
+Conditions:
+  Type           Status  Reason
+  ----           ------  ------
+  Progressing    True    NewReplicaSetAvailable
+  Available      True    MinimumReplicasAvailable
+OldReplicaSets:  <none>
+NewReplicaSet:   camera-w0-uvc-5b8b878864 (1/1 replicas created)
+Events:          <none>
+
+
+Name:                   homebridge
+Namespace:              suite
+CreationTimestamp:      Fri, 12 Sep 2025 07:53:26 -0500
+Labels:                 <none>
+Annotations:            deployment.kubernetes.io/revision: 4
+Selector:               app=homebridge
+Replicas:               1 desired | 1 updated | 2 total | 1 available | 1 unavailable
+StrategyType:           RollingUpdate
+MinReadySeconds:        0
+RollingUpdateStrategy:  25% max unavailable, 25% max surge
+Pod Template:
+  Labels:       app=homebridge
+  Annotations:  kubectl.kubernetes.io/restartedAt: 2025-09-18T20:26:20-05:00
+  Containers:
+   homebridge:
+    Image:       homebridge/homebridge:latest
+    Ports:       8581/TCP, 51443/TCP
+    Host Ports:  0/TCP, 0/TCP
+    Environment:
+      TZ:                         America/Chicago
+      HOMEBRIDGE_CONFIG_UI:       1
+      HOMEBRIDGE_CONFIG_UI_PORT:  8581
+      HOMEBRIDGE_CONFIG_UI_HOST:  0.0.0.0
+      HOMEBRIDGE_DISABLE_IPV6:    1
+      NODE_OPTIONS:               --dns-result-order=ipv4first
+    Mounts:
+      /homebridge from homebridge-data (rw)
+  Volumes:
+   homebridge-data:
+    Type:          PersistentVolumeClaim (a reference to a PersistentVolumeClaim in the same namespace)
+    ClaimName:     homebridge-data
+    ReadOnly:      false
+  Node-Selectors:  homekit=bridge
+  Tolerations:     <none>
+Conditions:
+  Type           Status  Reason
+  ----           ------  ------
+  Available      True    MinimumReplicasAvailable
+  Progressing    False   ProgressDeadlineExceeded
+OldReplicaSets:  homebridge-58b69cd7b (0/0 replicas created), homebridge-6d999f6966 (0/0 replicas created), homebridge-6b58f4db4 (1/1 replicas created)
+NewReplicaSet:   homebridge-59f6b5f798 (1/1 replicas created)
+Events:          <none>
+
+
+Name:               magicmirror-server
+Namespace:          suite
+CreationTimestamp:  Fri, 12 Sep 2025 07:53:26 -0500
+Labels:             <none>
+Annotations:        deployment.kubernetes.io/revision: 6
+Selector:           app=magicmirror-server
+Replicas:           1 desired | 1 updated | 1 total | 1 available | 0 unavailable
+StrategyType:       Recreate
+MinReadySeconds:    0
+Pod Template:
+  Labels:       app=magicmirror-server
+  Annotations:  kubectl.kubernetes.io/restartedAt: 2025-09-12T13:23:52-05:00
+  Init Containers:
+   seed-modules:
+    Image:      docker.io/allenwayne/magicmirror-server:2.32
+    Port:       <none>
+    Host Port:  <none>
+    Command:
+      /bin/sh
+      -lc
+    Args:
+      set -eux
+      rm -rf /work/modules/* /work/public/* || true
+      if [ -d /opt/magic_mirror/modules ]; then
+        cp -a /opt/magic_mirror/modules/. /work/modules/
+      fi
+      if [ -d /opt/magic_mirror/public ]; then
+        cp -a /opt/magic_mirror/public/. /work/public/
+      fi
+      
+    Environment:  <none>
+    Mounts:
+      /work/modules from mm-modules (rw)
+      /work/public from mm-public (rw)
+   git-modules:
+    Image:      alpine:3.20
+    Port:       <none>
+    Host Port:  <none>
+    Command:
+      /bin/sh
+      -lc
+    Args:
+      echo skipping git-modules; exit 0
+    Environment:  <none>
+    Mounts:
+      /extras from mm-extras (rw)
+      /work/modules from mm-modules (rw)
+      /work/public from mm-public (rw)
+  Containers:
+   magicmirror:
+    Image:      docker.io/allenwayne/magicmirror-server:2.32
+    Port:       8080/TCP
+    Host Port:  0/TCP
+    Command:
+      /bin/sh
+      -lc
+    Args:
+      npm run server
+    Liveness:  http-get http://:8080/ delay=30s timeout=1s period=20s #success=1 #failure=3
+    Environment:
+      TZ:                   America/Chicago
+      OPENWEATHER_API_KEY:  <set to the key 'API_KEY' in secret 'openweather'>  Optional: false
+    Mounts:
+      /opt/magic_mirror/config/config.js from mm-config (rw,path="config.js")
+      /opt/magic_mirror/modules from mm-modules (rw)
+      /opt/magic_mirror/public from mm-public (rw)
+  Volumes:
+   mm-config:
+    Type:      ConfigMap (a volume populated by a ConfigMap)
+    Name:      magicmirror-config
+    Optional:  false
+   mm-modules:
+    Type:       EmptyDir (a temporary directory that shares a pod's lifetime)
+    Medium:     
+    SizeLimit:  <unset>
+   mm-public:
+    Type:       EmptyDir (a temporary directory that shares a pod's lifetime)
+    Medium:     
+    SizeLimit:  <unset>
+   mm-extras:
+    Type:          ConfigMap (a volume populated by a ConfigMap)
+    Name:          magicmirror-extras
+    Optional:      false
+  Node-Selectors:  kubernetes.io/hostname=m3
+  Tolerations:     <none>
+Conditions:
+  Type           Status  Reason
+  ----           ------  ------
+  Progressing    True    NewReplicaSetAvailable
+  Available      True    MinimumReplicasAvailable
+OldReplicaSets:  magicmirror-server-9c5796748 (0/0 replicas created), magicmirror-server-5c5ff79df (0/0 replicas created), magicmirror-server-98fd88fd (0/0 replicas created), magicmirror-server-748c8d766d (0/0 replicas created), magicmirror-server-86864489dd (0/0 replicas created)
+NewReplicaSet:   magicmirror-server-78c5b58577 (1/1 replicas created)
+Events:          <none>
+
+
+Name:                   mediamtx
+Namespace:              suite
+CreationTimestamp:      Fri, 12 Sep 2025 07:53:26 -0500
+Labels:                 app=mediamtx
+Annotations:            deployment.kubernetes.io/revision: 1
+Selector:               app=mediamtx
+Replicas:               1 desired | 1 updated | 1 total | 1 available | 0 unavailable
+StrategyType:           RollingUpdate
+MinReadySeconds:        0
+RollingUpdateStrategy:  25% max unavailable, 25% max surge
+Pod Template:
+  Labels:  app=mediamtx
+  Containers:
+   mediamtx:
+    Image:         bluenviron/mediamtx:latest
+    Ports:         8554/TCP, 8888/TCP, 8889/TCP
+    Host Ports:    0/TCP, 0/TCP, 0/TCP
+    Environment:   <none>
+    Mounts:        <none>
+  Volumes:         <none>
+  Node-Selectors:  <none>
+  Tolerations:     <none>
+Conditions:
+  Type           Status  Reason
+  ----           ------  ------
+  Progressing    True    NewReplicaSetAvailable
+  Available      True    MinimumReplicasAvailable
+OldReplicaSets:  <none>
+NewReplicaSet:   mediamtx-76cf6b4649 (1/1 replicas created)
+Events:          <none>
+
+
+Name:                   micro-cam-relay
+Namespace:              suite
+CreationTimestamp:      Fri, 19 Sep 2025 10:30:37 -0500
+Labels:                 app=micro-cam-relay
+Annotations:            deployment.kubernetes.io/revision: 2
+Selector:               app=micro-cam-relay
+Replicas:               1 desired | 1 updated | 1 total | 0 available | 1 unavailable
+StrategyType:           RollingUpdate
+MinReadySeconds:        0
+RollingUpdateStrategy:  25% max unavailable, 25% max surge
+Pod Template:
+  Labels:  app=micro-cam-relay
+  Containers:
+   ffmpeg:
+    Image:      lscr.io/linuxserver/ffmpeg:latest
+    Port:       8554/TCP
+    Host Port:  0/TCP
+    Args:
+      /bin/sh
+      -lc
+      set -eux
+      # RTSP pseudo-stream from refreshed JPEG
+      ffmpeg -re -r 5 -f image2 -i http://camera-uploader.suite.home.arpa/latest.jpg \
+        -vf "fps=5,format=yuv420p" \
+        -f rtsp rtsp://0.0.0.0:8554/porch
+      
+    Environment:   <none>
+    Mounts:        <none>
+  Volumes:         <none>
+  Node-Selectors:  <none>
+  Tolerations:     <none>
+Conditions:
+  Type           Status  Reason
+  ----           ------  ------
+  Progressing    True    NewReplicaSetAvailable
+  Available      False   MinimumReplicasUnavailable
+OldReplicaSets:  micro-cam-relay-7787589bfd (0/0 replicas created)
+NewReplicaSet:   micro-cam-relay-5c9b5ff7d7 (1/1 replicas created)
+Events:          <none>
+
+
+Name:                   mosquitto
+Namespace:              suite
+CreationTimestamp:      Fri, 12 Sep 2025 07:53:25 -0500
+Labels:                 <none>
+Annotations:            deployment.kubernetes.io/revision: 1
+Selector:               app=mosquitto
+Replicas:               1 desired | 1 updated | 1 total | 1 available | 0 unavailable
+StrategyType:           RollingUpdate
+MinReadySeconds:        0
+RollingUpdateStrategy:  25% max unavailable, 25% max surge
+Pod Template:
+  Labels:  app=mosquitto
+  Containers:
+   mosquitto:
+    Image:        eclipse-mosquitto:2
+    Port:         1883/TCP
+    Host Port:    0/TCP
+    Environment:  <none>
+    Mounts:
+      /mosquitto/config from conf (rw)
+  Volumes:
+   conf:
+    Type:          ConfigMap (a volume populated by a ConfigMap)
+    Name:          mosquitto-conf
+    Optional:      false
+  Node-Selectors:  <none>
+  Tolerations:     <none>
+Conditions:
+  Type           Status  Reason
+  ----           ------  ------
+  Progressing    True    NewReplicaSetAvailable
+  Available      True    MinimumReplicasAvailable
+OldReplicaSets:  <none>
+NewReplicaSet:   mosquitto-cb8c6884d (1/1 replicas created)
+Events:          <none>
+
+
+Name:                   netmon-w0
+Namespace:              suite
+CreationTimestamp:      Fri, 12 Sep 2025 07:53:26 -0500
+Labels:                 <none>
+Annotations:            deployment.kubernetes.io/revision: 5
+Selector:               app=netmon,node=w0
+Replicas:               1 desired | 1 updated | 1 total | 1 available | 0 unavailable
+StrategyType:           RollingUpdate
+MinReadySeconds:        0
+RollingUpdateStrategy:  25% max unavailable, 25% max surge
+Pod Template:
+  Labels:       app=netmon
+                node=w0
+  Annotations:  kubectl.kubernetes.io/restartedAt: 2025-09-12T09:14:09-05:00
+  Containers:
+   netmon:
+    Image:      alpine:3.20
+    Port:       <none>
+    Host Port:  <none>
+    Command:
+      /bin/sh
+      -lc
+    Args:
+      set -eux; apk add --no-cache coreutils mosquitto-clients iproute2 || true; cp /opt/netmon/netmon.sh /tmp/netmon.sh; chmod +x /tmp/netmon.sh; /tmp/netmon.sh
+    Environment:
+      IFACE:         eth0
+      MQTT_HOST:     mosquitto.suite.svc.cluster.local
+      MQTT_PORT:     1883
+      MQTT_USER:     edge
+      MQTT_PASS:     edge
+      TOPIC_BASE:    net
+      NODE_NAME:      (v1:spec.nodeName)
+      INTERVAL_SEC:  2
+    Mounts:
+      /opt/netmon from netmon-scripts (rw)
+  Volumes:
+   netmon-scripts:
+    Type:          ConfigMap (a volume populated by a ConfigMap)
+    Name:          netmon-scripts
+    Optional:      false
+  Node-Selectors:  kubernetes.io/hostname=w0
+  Tolerations:     <none>
+Conditions:
+  Type           Status  Reason
+  ----           ------  ------
+  Progressing    True    NewReplicaSetAvailable
+  Available      True    MinimumReplicasAvailable
+OldReplicaSets:  netmon-w0-ff8846bc7 (0/0 replicas created), netmon-w0-5f9f9b5c9 (0/0 replicas created), netmon-w0-d8b99844d (0/0 replicas created), netmon-w0-85545f7ffc (0/0 replicas created)
+NewReplicaSet:   netmon-w0-85b9d96c57 (1/1 replicas created)
+Events:          <none>
+
+
+Name:               pihole
+Namespace:          suite
+CreationTimestamp:  Fri, 12 Sep 2025 07:53:26 -0500
+Labels:             <none>
+Annotations:        deployment.kubernetes.io/revision: 22
+Selector:           app=pihole
+Replicas:           1 desired | 1 updated | 1 total | 1 available | 0 unavailable
+StrategyType:       Recreate
+MinReadySeconds:    0
+Pod Template:
+  Labels:       app=pihole
+  Annotations:  kubectl.kubernetes.io/restartedAt: 2025-09-14T08:59:17-05:00
+  Containers:
+   pihole:
+    Image:       pihole/pihole:latest
+    Ports:       53/UDP, 53/TCP, 80/TCP
+    Host Ports:  0/UDP, 0/TCP, 0/TCP
+    Liveness:    exec [sh -lc dig +time=1 +tries=1 @127.0.0.1 pi.hole || exit 1] delay=30s timeout=2s period=10s #success=1 #failure=3
+    Readiness:   exec [sh -lc dig +time=1 +tries=1 @127.0.0.1 pi.hole || exit 1] delay=10s timeout=2s period=5s #success=1 #failure=3
+    Startup:     tcp-socket :53 delay=10s timeout=1s period=5s #success=1 #failure=30
+    Environment:
+      DNSMASQ_LISTENING:               all
+      ServerIP:                        192.168.50.245
+      WEB_PORT:                        80
+      DNSSEC:                          false
+      TZ:                              America/Chicago
+      PIHOLE_DNS_1:                    1.1.1.1
+      PIHOLE_DNS_2:                    9.9.9.9
+      FTLCONF_dnsmasq__conf_dir:       /etc/dnsmasq.d
+      FTLCONF_dnsmasq__addn_hosts:     /etc/pihole/custom.list
+      FTLCONF_pihole__etc_dnsmasq_d:   true
+      FTLCONF_pihole__dnsmasq_lines:   ["address=/suite.home.arpa/192.168.50.242","addn-hosts=/etc/pihole/custom.list"]
+      FTLCONF_webserver_api_password:  @1lSaved
+    Mounts:
+      /etc/dnsmasq.d from etc-dnsmasq (rw)
+      /etc/dnsmasq.d/01-ui-host.conf from ui-override (rw,path="01-ui-host.conf")
+      /etc/dnsmasq.d/02-suite-home-arpa.conf from dnsmasq-cm (rw,path="02-suite-home-arpa.conf")
+      /etc/pihole from etc-pihole (rw)
+      /etc/pihole/custom.list from pihole-custom-list (rw,path="custom.list")
+  Volumes:
+   etc-pihole:
+    Type:       PersistentVolumeClaim (a reference to a PersistentVolumeClaim in the same namespace)
+    ClaimName:  pihole-etc-pihole-pvc
+    ReadOnly:   false
+   etc-dnsmasq:
+    Type:       PersistentVolumeClaim (a reference to a PersistentVolumeClaim in the same namespace)
+    ClaimName:  pihole-dnsmasq-pvc
+    ReadOnly:   false
+   dnsmasq-cm:
+    Type:      ConfigMap (a volume populated by a ConfigMap)
+    Name:      pihole-dnsmasq
+    Optional:  false
+   ui-override:
+    Type:      ConfigMap (a volume populated by a ConfigMap)
+    Name:      pihole-ui-override
+    Optional:  false
+   pihole-custom-list:
+    Type:          ConfigMap (a volume populated by a ConfigMap)
+    Name:          pihole-custom-list
+    Optional:      false
+  Node-Selectors:  kubernetes.io/hostname=m2
+  Tolerations:     <none>
+Conditions:
+  Type           Status  Reason
+  ----           ------  ------
+  Available      True    MinimumReplicasAvailable
+  Progressing    True    NewReplicaSetAvailable
+OldReplicaSets:  pihole-7f7776d7fd (0/0 replicas created), pihole-5d858cd496 (0/0 replicas created), pihole-687599f45c (0/0 replicas created), pihole-7488cb6499 (0/0 replicas created), pihole-7fdbc9b66b (0/0 replicas created), pihole-66ffc46dfb (0/0 replicas created), pihole-6864b4b5b (0/0 replicas created), pihole-5478dc78 (0/0 replicas created), pihole-5d4bfb4bb5 (0/0 replicas created), pihole-78dc9589f8 (0/0 replicas created)
+NewReplicaSet:   pihole-55bfd46cb (1/1 replicas created)
+Events:          <none>
+
+
+Name:                   scrypted
+Namespace:              suite
+CreationTimestamp:      Fri, 12 Sep 2025 07:53:26 -0500
+Labels:                 <none>
+Annotations:            deployment.kubernetes.io/revision: 1
+Selector:               app=scrypted
+Replicas:               1 desired | 1 updated | 1 total | 1 available | 0 unavailable
+StrategyType:           RollingUpdate
+MinReadySeconds:        0
+RollingUpdateStrategy:  25% max unavailable, 25% max surge
+Pod Template:
+  Labels:  app=scrypted
+  Containers:
+   scrypted:
+    Image:      koush/scrypted
+    Port:       <none>
+    Host Port:  <none>
+    Environment:
+      TZ:  America/Chicago
+    Mounts:
+      /server/volume from data (rw)
+  Volumes:
+   data:
+    Type:          HostPath (bare host directory volume)
+    Path:          /var/lib/scrypted
+    HostPathType:  DirectoryOrCreate
+  Node-Selectors:  <none>
+  Tolerations:     <none>
+Conditions:
+  Type           Status  Reason
+  ----           ------  ------
+  Progressing    True    NewReplicaSetAvailable
+  Available      True    MinimumReplicasAvailable
+OldReplicaSets:  <none>
+NewReplicaSet:   scrypted-7cd96f9655 (1/1 replicas created)
+Events:          <none>
+
+
+Name:                   serial2mqtt-w0
+Namespace:              suite
+CreationTimestamp:      Fri, 12 Sep 2025 07:53:26 -0500
+Labels:                 <none>
+Annotations:            deployment.kubernetes.io/revision: 8
+Selector:               app=serial2mqtt-w0
+Replicas:               1 desired | 1 updated | 1 total | 1 available | 0 unavailable
+StrategyType:           RollingUpdate
+MinReadySeconds:        0
+RollingUpdateStrategy:  25% max unavailable, 25% max surge
+Pod Template:
+  Labels:       app=serial2mqtt-w0
+  Annotations:  kubectl.kubernetes.io/restartedAt: 2025-09-12T12:48:29-05:00
+  Containers:
+   bridge:
+    Image:      allenwayne/serial2mqtt:1.0
+    Port:       <none>
+    Host Port:  <none>
+    Environment:
+      BAUD:         115200
+      MQTT_URL:     mosquitto.suite.svc.cluster.local
+      MQTT_PORT:    1883
+      MQTT_USER:    edge
+      MQTT_PASS:    edge
+      TOPIC:        micropython/w0/telemetry
+      SERIAL_PATH:  /dev/serial/by-id/usb-MicroPython_Board_in_FS_mode_50353374aa965f18-if00
+    Mounts:
+      /dev/serial/by-id from byid (ro)
+  Volumes:
+   byid:
+    Type:          HostPath (bare host directory volume)
+    Path:          /dev/serial/by-id
+    HostPathType:  Directory
+  Node-Selectors:  kubernetes.io/hostname=w0
+  Tolerations:     <none>
+Conditions:
+  Type           Status  Reason
+  ----           ------  ------
+  Progressing    True    NewReplicaSetAvailable
+  Available      True    MinimumReplicasAvailable
+OldReplicaSets:  serial2mqtt-w0-6f9df656d4 (0/0 replicas created), serial2mqtt-w0-79d8b45cd9 (0/0 replicas created), serial2mqtt-w0-5bcc554747 (0/0 replicas created), serial2mqtt-w0-66cf5cb788 (0/0 replicas created), serial2mqtt-w0-65f56bd6cd (0/0 replicas created), serial2mqtt-w0-575ff9f4f5 (0/0 replicas created), serial2mqtt-w0-78c57f587f (0/0 replicas created)
+NewReplicaSet:   serial2mqtt-w0-6697f7f55d (1/1 replicas created)
+Events:          <none>
+
+
+Name:                   wyze
+Namespace:              suite
+CreationTimestamp:      Fri, 12 Sep 2025 07:53:26 -0500
+Labels:                 <none>
+Annotations:            deployment.kubernetes.io/revision: 1
+Selector:               app=wyze
+Replicas:               1 desired | 1 updated | 1 total | 1 available | 0 unavailable
+StrategyType:           RollingUpdate
+MinReadySeconds:        0
+RollingUpdateStrategy:  25% max unavailable, 25% max surge
+Pod Template:
+  Labels:  app=wyze
+  Containers:
+   docker-wyze-bridge:
+    Image:      mrlt8/wyze-bridge
+    Port:       8554/TCP
+    Host Port:  0/TCP
+    Environment:
+      WYZE_EMAIL:     7mht88qm89@privaterelay.appleid.com
+      WYZE_PASSWORD:  Eleven-1=10
+    Mounts:           <none>
+  Volumes:            <none>
+  Node-Selectors:     <none>
+  Tolerations:        <none>
+Conditions:
+  Type           Status  Reason
+  ----           ------  ------
+  Progressing    True    NewReplicaSetAvailable
+  Available      True    MinimumReplicasAvailable
+OldReplicaSets:  <none>
+NewReplicaSet:   wyze-f8fcf4c47 (1/1 replicas created)
+Events:          <none>
+
+
+Name:                   zigbee2mqtt
+Namespace:              suite
+CreationTimestamp:      Fri, 12 Sep 2025 07:53:26 -0500
+Labels:                 <none>
+Annotations:            deployment.kubernetes.io/revision: 4
+Selector:               app=zigbee2mqtt
+Replicas:               1 desired | 1 updated | 1 total | 1 available | 0 unavailable
+StrategyType:           RollingUpdate
+MinReadySeconds:        0
+RollingUpdateStrategy:  25% max unavailable, 25% max surge
+Pod Template:
+  Labels:       app=zigbee2mqtt
+  Annotations:  kubectl.kubernetes.io/restartedAt: 2025-09-12T09:14:59-05:00
+  Init Containers:
+   z2m-bootstrap:
+    Image:      busybox:1.36
+    Port:       <none>
+    Host Port:  <none>
+    Command:
+      sh
+      -lc
+    Args:
+      [ -f /app/data/configuration.yaml ] || cp /bootstrap/configuration.yaml /app/data/configuration.yaml
+    Environment:
+      ZIGBEE2MQTT_CONFIG_MQTT_SERVER:  mqtt://mosquitto.suite.svc.cluster.local:1883
+    Mounts:
+      /app/data from z2m-data (rw)
+      /bootstrap/configuration.yaml from z2m-config (rw,path="configuration.yaml")
+  Containers:
+   zigbee2mqtt:
+    Image:      koenkk/zigbee2mqtt:latest
+    Port:       8081/TCP
+    Host Port:  0/TCP
+    Environment:
+      TZ:                              America/Chicago
+      ZIGBEE2MQTT_CONFIG_MQTT_SERVER:  mqtt://mosquitto.suite.svc.cluster.local:1883
+    Mounts:
+      /app/data from z2m-data (rw)
+      /dev from dev (rw)
+      /dev/serial/by-id/usb-ITEAD_SONOFF_Zigbee_3.0_USB_Dongle_Plus_V2_20231218150839-if00 from zigbee (rw)
+      /run/udev from udev (ro)
+  Volumes:
+   z2m-data:
+    Type:       EmptyDir (a temporary directory that shares a pod's lifetime)
+    Medium:     
+    SizeLimit:  <unset>
+   z2m-config:
+    Type:      ConfigMap (a volume populated by a ConfigMap)
+    Name:      zigbee2mqtt-config
+    Optional:  false
+   dev:
+    Type:          HostPath (bare host directory volume)
+    Path:          /dev
+    HostPathType:  Directory
+   udev:
+    Type:          HostPath (bare host directory volume)
+    Path:          /run/udev
+    HostPathType:  Directory
+   zigbee:
+    Type:          HostPath (bare host directory volume)
+    Path:          /dev/serial/by-id/usb-ITEAD_SONOFF_Zigbee_3.0_USB_Dongle_Plus_V2_20231218150839-if00
+    HostPathType:  CharDevice
+  Node-Selectors:  kubernetes.io/hostname=m2
+  Tolerations:     <none>
+Conditions:
+  Type           Status  Reason
+  ----           ------  ------
+  Progressing    True    NewReplicaSetAvailable
+  Available      True    MinimumReplicasAvailable
+OldReplicaSets:  zigbee2mqtt-79556b7c9 (0/0 replicas created), zigbee2mqtt-55f8ddbf9 (0/0 replicas created), zigbee2mqtt-db594d777 (0/0 replicas created)
+NewReplicaSet:   zigbee2mqtt-75fbcfb897 (1/1 replicas created)
+Events:          <none>
+
+
+Name:                     camera-esp32-relay
+Namespace:                suite
+Labels:                   app=camera-esp32-relay
+Annotations:              <none>
+Selector:                 app=camera-esp32-relay
+Type:                     ClusterIP
+IP Family Policy:         SingleStack
+IP Families:              IPv4
+IP:                       10.43.213.209
+IPs:                      10.43.213.209
+Port:                     rtsp  8554/TCP
+TargetPort:               rtsp/TCP
+Endpoints:                192.168.50.6:8554
+Port:                     hls  8888/TCP
+TargetPort:               hls/TCP
+Endpoints:                192.168.50.6:8888
+Port:                     webrtc  8889/TCP
+TargetPort:               webrtc/TCP
+Endpoints:                192.168.50.6:8889
+Session Affinity:         None
+Internal Traffic Policy:  Cluster
+Events:                   <none>
+
+
+Name:                     camera-esp32-relay-public
+Namespace:                suite
+Labels:                   app=camera-esp32-relay
+Annotations:              <none>
+Selector:                 app=camera-esp32-relay
+Type:                     LoadBalancer
+IP Family Policy:         SingleStack
+IP Families:              IPv4
+IP:                       10.43.249.89
+IPs:                      10.43.249.89
+LoadBalancer Ingress:     192.168.50.246 (VIP)
+Port:                     rtsp  8554/TCP
+TargetPort:               rtsp/TCP
+NodePort:                 rtsp  32575/TCP
+Endpoints:                192.168.50.6:8554
+Port:                     hls  8888/TCP
+TargetPort:               hls/TCP
+NodePort:                 hls  30425/TCP
+Endpoints:                192.168.50.6:8888
+Port:                     webrtc  8889/TCP
+TargetPort:               webrtc/TCP
+NodePort:                 webrtc  31640/TCP
+Endpoints:                192.168.50.6:8889
+Session Affinity:         None
+External Traffic Policy:  Cluster
+Internal Traffic Policy:  Cluster
+Events:                   <none>
+
+
+Name:                     camera-uploader
+Namespace:                suite
+Labels:                   <none>
+Annotations:              <none>
+Selector:                 app=camera-uploader
+Type:                     ClusterIP
+IP Family Policy:         SingleStack
+IP Families:              IPv4
+IP:                       10.43.147.59
+IPs:                      10.43.147.59
+Port:                     http  80/TCP
+TargetPort:               80/TCP
+Endpoints:                
+Session Affinity:         None
+Internal Traffic Policy:  Cluster
+Events:                   <none>
+
+
+Name:                     homebridge
+Namespace:                suite
+Labels:                   <none>
+Annotations:              <none>
+Selector:                 app=homebridge
+Type:                     ClusterIP
+IP Family Policy:         SingleStack
+IP Families:              IPv4
+IP:                       10.43.54.215
+IPs:                      10.43.54.215
+Port:                     ui  8581/TCP
+TargetPort:               8581/TCP
+Endpoints:                192.168.50.2:8581
+Session Affinity:         None
+Internal Traffic Policy:  Cluster
+Events:                   <none>
+
+
+Name:                     magicmirror-server
+Namespace:                suite
+Labels:                   <none>
+Annotations:              <none>
+Selector:                 app=magicmirror-server
+Type:                     ClusterIP
+IP Family Policy:         SingleStack
+IP Families:              IPv4
+IP:                       10.43.101.166
+IPs:                      10.43.101.166
+Port:                     http  8080/TCP
+TargetPort:               8080/TCP
+Endpoints:                10.42.1.109:8080
+Session Affinity:         None
+Internal Traffic Policy:  Cluster
+Events:                   <none>
+
+
+Name:                     mediamtx
+Namespace:                suite
+Labels:                   <none>
+Annotations:              <none>
+Selector:                 app=mediamtx
+Type:                     ClusterIP
+IP Family Policy:         SingleStack
+IP Families:              IPv4
+IP:                       10.43.57.2
+IPs:                      10.43.57.2
+Port:                     rtsp  8554/TCP
+TargetPort:               rtsp/TCP
+Endpoints:                10.42.1.108:8554
+Port:                     hls  8888/TCP
+TargetPort:               hls/TCP
+Endpoints:                10.42.1.108:8888
+Port:                     webrtc  8889/TCP
+TargetPort:               webrtc/TCP
+Endpoints:                10.42.1.108:8889
+Session Affinity:         None
+Internal Traffic Policy:  Cluster
+Events:                   <none>
+
+
+Name:                     micro-cam-relay
+Namespace:                suite
+Labels:                   <none>
+Annotations:              <none>
+Selector:                 app=micro-cam-relay
+Type:                     NodePort
+IP Family Policy:         SingleStack
+IP Families:              IPv4
+IP:                       10.43.78.14
+IPs:                      10.43.78.14
+Port:                     rtsp  8554/TCP
+TargetPort:               8554/TCP
+NodePort:                 rtsp  30554/TCP
+Endpoints:                
+Session Affinity:         None
+External Traffic Policy:  Cluster
+Internal Traffic Policy:  Cluster
+Events:                   <none>
+
+
+Name:                     mosquitto
+Namespace:                suite
+Labels:                   <none>
+Annotations:              <none>
+Selector:                 app=mosquitto
+Type:                     ClusterIP
+IP Family Policy:         SingleStack
+IP Families:              IPv4
+IP:                       10.43.34.37
+IPs:                      10.43.34.37
+Port:                     mqtt  1883/TCP
+TargetPort:               1883/TCP
+Endpoints:                10.42.2.107:1883
+Session Affinity:         None
+Internal Traffic Policy:  Cluster
+Events:                   <none>
+
+
+Name:                     pihole
+Namespace:                suite
+Labels:                   <none>
+Annotations:              metallb.universe.tf/address-pool: default
+Selector:                 app=pihole
+Type:                     LoadBalancer
+IP Family Policy:         SingleStack
+IP Families:              IPv4
+IP:                       10.43.157.234
+IPs:                      10.43.157.234
+Desired LoadBalancer IP:  192.168.50.245
+LoadBalancer Ingress:     192.168.50.245 (VIP)
+Port:                     http  80/TCP
+TargetPort:               80/TCP
+NodePort:                 http  31961/TCP
+Endpoints:                192.168.50.6:80
+Session Affinity:         None
+External Traffic Policy:  Cluster
+Internal Traffic Policy:  Cluster
+Events:                   <none>
+
+
+Name:                     scrypted
+Namespace:                suite
+Labels:                   <none>
+Annotations:              <none>
+Selector:                 app=scrypted
+Type:                     ClusterIP
+IP Family Policy:         SingleStack
+IP Families:              IPv4
+IP:                       10.43.111.153
+IPs:                      10.43.111.153
+Port:                     ui  11080/TCP
+TargetPort:               11080/TCP
+Endpoints:                10.42.4.94:11080
+Session Affinity:         None
+Internal Traffic Policy:  Cluster
+Events:                   <none>
+
+
+Name:                     wyze
+Namespace:                suite
+Labels:                   <none>
+Annotations:              <none>
+Selector:                 app=wyze
+Type:                     LoadBalancer
+IP Family Policy:         SingleStack
+IP Families:              IPv4
+IP:                       10.43.122.233
+IPs:                      10.43.122.233
+Desired LoadBalancer IP:  192.168.50.243
+LoadBalancer Ingress:     192.168.50.243 (VIP)
+Port:                     rtsp  8554/TCP
+TargetPort:               8554/TCP
+NodePort:                 rtsp  30871/TCP
+Endpoints:                10.42.4.92:8554
+Session Affinity:         None
+External Traffic Policy:  Cluster
+Internal Traffic Policy:  Cluster
+Events:                   <none>
+
+
+Name:                     zigbee2mqtt
+Namespace:                suite
+Labels:                   <none>
+Annotations:              <none>
+Selector:                 app=zigbee2mqtt
+Type:                     ClusterIP
+IP Family Policy:         SingleStack
+IP Families:              IPv4
+IP:                       10.43.62.97
+IPs:                      10.43.62.97
+Port:                     web  8081/TCP
+TargetPort:               8081/TCP
+Endpoints:                10.42.0.188:8081
+Session Affinity:         None
+Internal Traffic Policy:  Cluster
+Events:                   <none>
+
+
+Name:             camera-uploader
+Labels:           <none>
+Namespace:        suite
+Address:          192.168.50.242
+Ingress Class:    <none>
+Default backend:  <default>
+Rules:
+  Host                             Path  Backends
+  ----                             ----  --------
+  camera-uploader.suite.home.arpa  
+                                   /   camera-uploader:80 ()
+Annotations:                       kubernetes.io/ingress.class: traefik
+Events:                            <none>
+
+
+Name:             mediamtx-hls
+Labels:           <none>
+Namespace:        suite
+Address:          192.168.50.242
+Ingress Class:    traefik
+Default backend:  <default>
+Rules:
+  Host                 Path  Backends
+  ----                 ----  --------
+  hls.suite.home.arpa  
+                       /   mediamtx:8888 (10.42.1.108:8888)
+Annotations:           traefik.ingress.kubernetes.io/router.entrypoints: web
+Events:                <none>
+
+
+Name:             micro-cam-relay
+Labels:           <none>
+Namespace:        suite
+Address:          192.168.50.242
+Ingress Class:    <none>
+Default backend:  <default>
+Rules:
+  Host                   Path  Backends
+  ----                   ----  --------
+  relay.suite.home.arpa  
+                         /   micro-cam-relay:8554 ()
+Annotations:             kubernetes.io/ingress.class: traefik
+                         traefik.ingress.kubernetes.io/router.entrypoints: web
+Events:                  <none>
+
+
+Name:             mirror-ingress
+Labels:           <none>
+Namespace:        suite
+Address:          192.168.50.242
+Ingress Class:    traefik
+Default backend:  <default>
+Rules:
+  Host                    Path  Backends
+  ----                    ----  --------
+  mirror.suite.home.arpa  
+                          /   magicmirror-server:8080 (10.42.1.109:8080)
+Annotations:              traefik.ingress.kubernetes.io/router.entrypoints: web,websecure
+                          traefik.ingress.kubernetes.io/router.tls: true
+                          traefik.ingress.kubernetes.io/service.serverstransport: suite-suite-stable@kubernetescrd
+Events:                   <none>
+
+
+Name:             pihole-ui
+Labels:           <none>
+Namespace:        suite
+Address:          192.168.50.242
+Ingress Class:    traefik
+Default backend:  <default>
+Rules:
+  Host                    Path  Backends
+  ----                    ----  --------
+  pihole.suite.home.arpa  
+                          /   pihole:80 (192.168.50.6:80)
+Annotations:              traefik.ingress.kubernetes.io/router.entrypoints: web
+                          traefik.ingress.kubernetes.io/service.responseforwarding.flushinterval: 100ms
+Events:                   <none>
+
+
+Name:             scrypted-ingress
+Labels:           <none>
+Namespace:        suite
+Address:          192.168.50.242
+Ingress Class:    traefik
+Default backend:  <default>
+TLS:
+  suite-home-arpa-tls terminates scrypted.suite.home.arpa
+Rules:
+  Host                      Path  Backends
+  ----                      ----  --------
+  scrypted.suite.home.arpa  
+                            /   scrypted:11080 (10.42.4.94:11080)
+Annotations:                traefik.ingress.kubernetes.io/router.entrypoints: web,websecure
+                            traefik.ingress.kubernetes.io/router.tls: true
+                            traefik.ingress.kubernetes.io/serverstransport.insecureskipverify: true
+                            traefik.ingress.kubernetes.io/service.serversscheme: http
+Events:                     <none>
+
+
+Name:             suite-apps
+Labels:           <none>
+Namespace:        suite
+Address:          192.168.50.242
+Ingress Class:    traefik
+Default backend:  <default>
+TLS:
+  suite-home-arpa-tls terminates homebridge.suite.home.arpa
+Rules:
+  Host                        Path  Backends
+  ----                        ----  --------
+  homebridge.suite.home.arpa  
+                              /   homebridge:8581 (192.168.50.2:8581)
+Annotations:                  traefik.ingress.kubernetes.io/reloaded: 1757878314
+                              traefik.ingress.kubernetes.io/router.entrypoints: web,websecure
+                              traefik.ingress.kubernetes.io/router.tls: true
+                              traefik.ingress.kubernetes.io/serverstransport.insecureskipverify: true
+                              traefik.ingress.kubernetes.io/service.responseforwarding.flushinterval: 100ms
+                              traefik.ingress.kubernetes.io/service.serversscheme: http
+                              traefik.ingress.kubernetes.io/service.serverstransport: suite-suite-stable@kubernetescrd
+Events:                       <none>
+
+
+Name:          camera-uploader-pvc
+Namespace:     suite
+StorageClass:  local-path
+Status:        Bound
+Volume:        pvc-be2937b5-1474-4e0f-bb72-1a1460d91c3e
+Labels:        <none>
+Annotations:   pv.kubernetes.io/bind-completed: yes
+               pv.kubernetes.io/bound-by-controller: yes
+               volume.beta.kubernetes.io/storage-provisioner: rancher.io/local-path
+               volume.kubernetes.io/selected-node: m1
+               volume.kubernetes.io/storage-provisioner: rancher.io/local-path
+Finalizers:    [kubernetes.io/pvc-protection]
+Capacity:      2Gi
+Access Modes:  RWO
+VolumeMode:    Filesystem
+Used By:       camera-uploader-5d66c59bfb-45pb2
+               camera-uploader-7f48df5955-5x98r
+Events:        <none>
+
+
+Name:          homebridge-backups
+Namespace:     suite
+StorageClass:  local-path
+Status:        Bound
+Volume:        pvc-9d61af45-f90f-4dcf-9b59-7d143f346f1c
+Labels:        <none>
+Annotations:   pv.kubernetes.io/bind-completed: yes
+               pv.kubernetes.io/bound-by-controller: yes
+               volume.beta.kubernetes.io/storage-provisioner: rancher.io/local-path
+               volume.kubernetes.io/selected-node: m1
+               volume.kubernetes.io/storage-provisioner: rancher.io/local-path
+Finalizers:    [kubernetes.io/pvc-protection]
+Capacity:      2Gi
+Access Modes:  RWO
+VolumeMode:    Filesystem
+Used By:       homebridge-backup-29303052-vt8x2
+               homebridge-backup-29304492-rd765
+               homebridge-backup-29305932-7rjjz
+Events:        <none>
+
+
+Name:          homebridge-data
+Namespace:     suite
+StorageClass:  local-path
+Status:        Bound
+Volume:        pvc-11eb3377-23a1-4d57-97c9-6d2b46cbf1cc
+Labels:        <none>
+Annotations:   pv.kubernetes.io/bind-completed: yes
+               pv.kubernetes.io/bound-by-controller: yes
+               volume.beta.kubernetes.io/storage-provisioner: rancher.io/local-path
+               volume.kubernetes.io/selected-node: m1
+               volume.kubernetes.io/storage-provisioner: rancher.io/local-path
+Finalizers:    [kubernetes.io/pvc-protection]
+Capacity:      10Gi
+Access Modes:  RWO
+VolumeMode:    Filesystem
+Used By:       homebridge-59f6b5f798-cxdbg
+               homebridge-6b58f4db4-5f6f6
+               homebridge-backup-29303052-vt8x2
+               homebridge-backup-29304492-rd765
+               homebridge-backup-29305932-7rjjz
+Events:        <none>
+
+
+Name:          pihole-dnsmasq-pvc
+Namespace:     suite
+StorageClass:  local-path
+Status:        Bound
+Volume:        pvc-ded140e4-a597-48cb-9658-eff99da5830f
+Labels:        <none>
+Annotations:   pv.kubernetes.io/bind-completed: yes
+               pv.kubernetes.io/bound-by-controller: yes
+               volume.beta.kubernetes.io/storage-provisioner: rancher.io/local-path
+               volume.kubernetes.io/selected-node: m2
+               volume.kubernetes.io/storage-provisioner: rancher.io/local-path
+Finalizers:    [kubernetes.io/pvc-protection]
+Capacity:      1Gi
+Access Modes:  RWO
+VolumeMode:    Filesystem
+Used By:       pihole-55bfd46cb-x586l
+Events:        <none>
+
+
+Name:          pihole-etc-pihole-pvc
+Namespace:     suite
+StorageClass:  local-path
+Status:        Bound
+Volume:        pvc-e232e4b7-5387-4b6b-b142-c31514bfac5c
+Labels:        <none>
+Annotations:   pv.kubernetes.io/bind-completed: yes
+               pv.kubernetes.io/bound-by-controller: yes
+               volume.beta.kubernetes.io/storage-provisioner: rancher.io/local-path
+               volume.kubernetes.io/selected-node: m2
+               volume.kubernetes.io/storage-provisioner: rancher.io/local-path
+Finalizers:    [kubernetes.io/pvc-protection]
+Capacity:      2Gi
+Access Modes:  RWO
+VolumeMode:    Filesystem
+Used By:       pihole-55bfd46cb-x586l
+Events:        <none>
