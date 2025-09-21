@@ -13,6 +13,7 @@ spec:
       # k8s/relay.yaml (snippet)
       containers:
       - name: ffmpeg
+<<<<<<< HEAD
         image: lscr.io/linuxserver/ffmpeg:latest
         args:
           - /bin/sh
@@ -22,6 +23,23 @@ spec:
             ffmpeg -re -r 5 -f image2 -i http://camera-uploader.suite.home.arpa/latest.jpg \
               -vf "fps=5,format=yuv420p" \
               -f rtsp rtsp://0.0.0.0:8554/porch
+=======
+        image: jrottenberg/ffmpeg:6-alpine
+        command: [ffmpeg]
+        args:
+          - -re
+          - -r
+          - "5"
+          - -f
+          - image2
+          - -i
+          - http://camera-uploader.suite.svc.cluster.local/latest.jpg
+          - -vf
+          - fps=5,format=yuv420p
+          - -f
+          - rtsp
+          - rtsp://0.0.0.0:8554/porch
+>>>>>>> 7627e469484f4345f842cdfe9fb3388c90132a63
         ports:
           - containerPort: 8554
             name: rtsp
