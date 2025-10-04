@@ -1,0 +1,31 @@
+#cloud-config
+hostname: ${hostname}
+users:
+  - name: ubuntu
+    sudo: ALL=(ALL) NOPASSWD:ALL
+    groups: users, admin, sudo
+    ssh_authorized_keys:
+      - ${ssh_key}
+package_update: true
+package_upgrade: true
+packages:
+  - curl
+  - qemu-guest-agent
+write_files:
+  - path: /usr/local/bin/k3s-agent-install.sh
+    permissions: '0755'
+    owner: root:root
+    content: |
+      #!/bin/bash
+      set -euxo pipefail
+      curl -sfL https://get.k3s.io | \
+        INSTALL_K3S_EXEC="--node-name ${node_name} --node-label location=onprem" \
+        K3S_URL="${k3s_url}" \
+        K3S_TOKEN="${k3s_token}" \
+        sh -
+      systemctl enable k3s-agent
+      systemctl start k3s-agent
+runcmd:
+  - [ bash, -c, '/usr/local/bin/k3s-agent-install.sh' ]
+  - [ systemctl, enable, qemu-guest-agent ]
+  - [ systemctl, start, qemu-guest-agent ]
