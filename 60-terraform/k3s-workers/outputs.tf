@@ -1,20 +1,22 @@
-output "aws_worker_public_ip" {
-  description = "Public IPv4 address of the AWS-based worker node."
-  value       = aws_instance.k3s_worker.public_ip
+output "networking_namespace" {
+  value = try(kubernetes_namespace.networking.metadata[0].name, null)
 }
 
-output "aws_worker_public_dns" {
-  description = "Public DNS name of the AWS-based worker node."
-  value       = aws_instance.k3s_worker.public_dns
+output "external_dns_mode" {
+  value = var.external_dns_provider
 }
 
-output "onprem_worker_ip" {
-  description = "Discovered IPv4 address of the libvirt worker (requires DHCP lease)."
-  value       = libvirt_domain.worker.network_interface[0].addresses
+output "metallb_pool" {
+  value = var.metallb_address_pool
 }
 
-output "rendered_cloud_init" {
-  description = "Local path to the rendered cloud-init file used for the on-prem worker."
-  value       = local_file.cloud_init.filename
-  sensitive   = true
+output "grafana_url" {
+  value       = "https://grafana.${var.domain_name}"
+  description = "Available if monitoring_enabled and DNS points to Traefik LB."
 }
+
+output "cloud_worker_public_ip" {
+  value       = try(aws_instance.cloud_worker.public_ip, null)
+  description = "Public IP of the AWS cloud worker (if created)."
+}
+

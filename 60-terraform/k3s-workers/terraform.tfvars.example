@@ -1,0 +1,47 @@
+# ----- Core K3s -----
+k3s_url        = "https://192.168.50.251:6443"
+k3s_token      = "REPLACE_ME_FROM_NODE_TOKEN"
+kubeconfig_path = "~/.kube/config"
+cluster_name    = "smart-kube"
+cluster_lan_cidr = "192.168.50.0/24"
+
+# ----- AWS -----
+aws_profile       = "default"
+aws_region        = "us-east-1"
+aws_key_name      = "allenwayne-main"
+aws_allowed_cidr  = "203.0.113.42/32" # replace with your current public IP /32 or your VPN CIDR
+aws_vpc_cidr      = "10.42.0.0/16"
+aws_public_subnets  = ["10.42.1.0/24","10.42.2.0/24"]
+aws_private_subnets = ["10.42.101.0/24","10.42.102.0/24"]
+aws_eks_enable    = false
+aws_ec2_enable    = false
+
+tags = {
+  Project = "iot"
+  Owner   = "allenwayne"
+  Env     = "home"
+}
+
+# ----- Networking / Ingress -----
+metallb_address_pool = ["192.168.50.241-192.168.50.251"]
+ingress_class        = "traefik"
+external_dns_provider = "cloudflare" # or "route53"
+
+# ----- DNS / TLS -----
+domain_name = "allenwmoorejr.org"
+dns_zone_id = "REPLACE_WITH_ZONE_ID"
+acme_email  = "allenwmoorejr@outlook.com"
+acme_env    = "prod"
+
+# ----- Registry / GitOps -----
+registry_server   = "index.docker.io"
+registry_username = "allenwayne"
+registry_password = "REPLACE_WITH_TOKEN_OR_PASSWORD"
+gitops_repo_url   = "https://github.com/allenwmoorejr/smart-kube.git"
+gitops_branch     = "main"
+
+# ----- Observability -----
+monitoring_enable      = true
+grafana_admin_user     = "admin"
+grafana_admin_password = "REPLACE_ME"
+
