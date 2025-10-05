@@ -1,0 +1,20 @@
+apiVersion: batch/v1
+kind: Job
+metadata: { name: move-camera-uploader-data }
+spec:
+  template:
+    spec:
+      restartPolicy: Never
+      containers:
+      - name: mover
+        image: alpine:3.20
+        command: ["sh","-lc","apk add --no-cache rsync && rsync -aHAX /src/ /dst/"]
+        volumeMounts:
+        - { name: src, mountPath: /src }
+        - { name: dst, mountPath: /dst }
+      volumes:
+      - name: src
+        persistentVolumeClaim: { claimName: camera-uploader-pvc }   # old RWO PVC
+      - name: dst
+        persistentVolumeClaim: { claimName: camera-uploader-rwx }   # new RWX PVC
+

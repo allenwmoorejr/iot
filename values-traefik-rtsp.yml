@@ -1,0 +1,10 @@
+additionalArguments:
+  - "--entrypoints.rtsp.address=:8554/tcp"
+
+ports:
+  rtsp:
+    port: 8554
+    exposedPort: 8554
+    expose:
+      default: true
+    protocol: TCP

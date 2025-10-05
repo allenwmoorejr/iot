@@ -98,7 +98,7 @@ resource "aws_instance" "cloud_worker" {
 }
 # Create or register your SSH public key in AWS
 resource "aws_key_pair" "main" {
-  key_name   = var.aws_key_name             # e.g., "allenwayne-main"
-  public_key = file("~/.ssh/allenwayne-main.pub")  # adjust path if needed
+  key_name   = var.aws_key_name                   # e.g., "allenwayne-main"
+  public_key = file("~/.ssh/allenwayne-main.pub") # adjust path if needed
 }
 

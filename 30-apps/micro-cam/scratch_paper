@@ -1,0 +1,122 @@
+# Delete *only* the relay objects (leave the uploader and others alone)
+kubectl -n suite delete ingressroutetcp micro-cam-relay-tcp --ignore-not-found
+kubectl -n suite delete svc micro-cam-relay --ignore-not-found
+kubectl -n suite delete deploy micro-cam-relay --ignore-not-found
+kubectl -n suite delete rs -l app=micro-cam-relay --ignore-not-found  # purge stale ReplicaSets
+
+# Recreate: ClusterIP Service + sidecar fetcher + ffmpeg, and a clean IngressRouteTCP
+kubectl -n suite apply -f - <<'YAML'
+apiVersion: v1
+kind: Service
+metadata:
+  name: micro-cam-relay
+  namespace: suite
+spec:
+  selector: { app: micro-cam-relay }
+  ports:
+    - { name: rtsp, port: 8554, targetPort: 8554 }  # ClusterIP (no nodePort)
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: micro-cam-relay
+  namespace: suite
+  labels: { app: micro-cam-relay }
+spec:
+  replicas: 1
+  selector: { matchLabels: { app: micro-cam-relay } }
+  template:
+    metadata: { labels: { app: micro-cam-relay } }
+    spec:
+      nodeSelector: { kubernetes.io/hostname: m2 }
+      volumes: [ { name: frames, emptyDir: {} } ]
+      containers:
+      - name: fetcher
+        image: python:3.12-alpine
+        env:
+          - { name: SNAP_URL, value: "http://camera-uploader.suite.svc.cluster.local/latest.jpg" }
+          - { name: FPS, value: "5" }
+        command: ["/bin/sh","-lc"]
+        args:
+          - |
+            set -e
+            pip install --no-cache-dir requests >/dev/null
+            mkdir -p /frames
+            mkfifo /frames/stream.mjpg || true
+            python - <<'PY'
+            import os, time, requests
+            url = os.environ['SNAP_URL']
+            period = 1.0 / float(os.environ.get('FPS','5'))
+            with open("/frames/stream.mjpg", "wb", buffering=0) as f:
+                while True:
+                    t0=time.time()
+                    try:
+                        r = requests.get(url, timeout=2)
+                        if r.ok:
+                            b=r.content
+                            if len(b)>4 and b[:2]==b'\xFF\xD8' and b[-2:]==b'\xFF\xD9':
+                                f.write(b)
+                    except Exception:
+                        pass
+                    dt=time.time()-t0
+                    if dt<period: time.sleep(period-dt)
+            PY
+        volumeMounts: [ { name: frames, mountPath: /frames } ]
+      - name: ffmpeg
+        image: lscr.io/linuxserver/ffmpeg:latest   # multi-arch
+        command: ["/bin/bash","-lc"]
+        args:
+          - |
+            set -e
+            while [ ! -p /frames/stream.mjpg ]; do sleep 1; done
+            ffmpeg -hide_banner -nostats \
+                   -fflags +nobuffer -analyzeduration 0 -probesize 32k \
+                   -re -f image2pipe -vcodec mjpeg -i /frames/stream.mjpg \
+                   -vf "fps=5,format=yuv420p" \
+                   -c:v libx264 -preset veryfast -tune zerolatency \
+                   -pix_fmt yuv420p -profile:v baseline -level 3.1 \
+                   -x264-params keyint=30:min-keyint=30:scenecut=0 \
+                   -g 30 -b:v 1200k -maxrate 1500k -bufsize 2400k \
+                   -rtsp_transport tcp -f rtsp rtsp://0.0.0.0:8554/porch
+        ports: [ { name: rtsp, containerPort: 8554 } ]
+        readinessProbe:
+          tcpSocket: { port: 8554 }
+          initialDelaySeconds: 5
+          periodSeconds: 5
+        volumeMounts: [ { name: frames, mountPath: /frames } ]
+---
+apiVersion: traefik.io/v1alpha1
+kind: IngressRouteTCP
+metadata:
+  name: micro-cam-relay-tcp
+  namespace: suite
+spec:
+  entryPoints: [rtsp]
+  routes:
+    - match: HostSNI(`*`)
+      services:
+        - name: micro-cam-relay
+          namespace: suite
+          port: 8554
+YAML
+
+# Make sure the egress to the uploader is allowed (you already have this, re-apply just in case)
+kubectl -n suite apply -f - <<'YAML'
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-relay-egress-to-uploader
+  namespace: suite
+spec:
+  podSelector: { matchLabels: { app: micro-cam-relay } }
+  policyTypes: [Egress]
+  egress:
+    - to:
+        - namespaceSelector:
+            matchLabels: { kubernetes.io/metadata.name: suite }
+          podSelector:
+            matchLabels: { app: camera-uploader }
+      ports:
+        - { protocol: TCP, port: 80 }
+YAML
+

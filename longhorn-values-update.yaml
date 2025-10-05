@@ -1,0 +1,15 @@
+defaultSettings:
+  defaultDataPath: /var/lib/longhorn        # change if you mounted a dedicated partition
+  defaultReplicaCount: 3                    # “gold” habit
+  dataLocality: best-effort                 # keep data near workload when possible
+  replicaAutoBalance: best-effort
+  guaranteedEngineCPU: 0.2                  # tiny reserve on Pi-class CPUs
+  nodeDownPodDeletionPolicy: delete-both-statefulset-and-deployment-pod
+
+# Keep core components on the NVMe trio (optional but tidy):
+longhornManager:
+  nodeSelector: { storage: "nvme" }
+longhornDriver:
+  nodeSelector: { storage: "nvme" }
+longhornEngine:
+  nodeSelector: { storage: "nvme" }

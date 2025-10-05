@@ -1,0 +1,56 @@
+# storage-smoketest.yaml
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata: { name: test-rwo }
+spec:
+  accessModes: [ReadWriteOnce]
+  storageClassName: longhorn-gold
+  resources: { requests: { storage: 1Gi } }
+---
+apiVersion: v1
+kind: Pod
+metadata: { name: test-rwo-pod }
+spec:
+  containers:
+  - name: app
+    image: busybox
+    command: ["sh","-c","echo RWO-OK-$(date) > /data/ok.txt; sleep 3600"]
+    volumeMounts: [{ name: data, mountPath: /data }]
+  volumes:
+  - name: data
+    persistentVolumeClaim: { claimName: test-rwo }
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata: { name: test-rwx }
+spec:
+  accessModes: [ReadWriteMany]
+  storageClassName: longhorn-gold
+  resources: { requests: { storage: 1Gi } }
+---
+apiVersion: v1
+kind: Pod
+metadata: { name: test-rwx-a }
+spec:
+  containers:
+  - name: a
+    image: busybox
+    command: ["sh","-c","(hostname; date) >> /data/hello.txt; sleep 3600"]
+    volumeMounts: [{ name: data, mountPath: /data }]
+  volumes:
+  - name: data
+    persistentVolumeClaim: { claimName: test-rwx }
+---
+apiVersion: v1
+kind: Pod
+metadata: { name: test-rwx-b }
+spec:
+  containers:
+  - name: b
+    image: busybox
+    command: ["sh","-c","tail -f /data/hello.txt"]
+    volumeMounts: [{ name: data, mountPath: /data }]
+  volumes:
+  - name: data
+    persistentVolumeClaim: { claimName: test-rwx }
+

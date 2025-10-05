@@ -3,7 +3,7 @@ import os, time, json
 from prometheus_client import Counter, generate_latest, CONTENT_TYPE_LATEST
 
 app = Flask(__name__)
-UPLOAD_DIR = os.environ.get("UPLOAD_DIR", "/data")
+UPLOAD_DIR = os.environ.get("UPLOAD_DIR", "data")
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 
 events = Counter("camera_upload_events_total", "Count of camera uploads", ["source"])

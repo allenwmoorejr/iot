@@ -1,0 +1,18 @@
+# allow-namespace-to-uploader.yaml
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-namespace-to-uploader
+  namespace: suite
+spec:
+  podSelector:
+    matchLabels:
+      app: camera-uploader
+  policyTypes: [Ingress]
+  ingress:
+    - from:
+        - podSelector: {}   # any pod in namespace suite
+      ports:
+        - protocol: TCP
+          port: 80
+

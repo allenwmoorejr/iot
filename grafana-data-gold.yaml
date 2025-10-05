@@ -1,0 +1,8 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata: { name: grafana-data-gold }
+spec:
+  accessModes: [ReadWriteOnce]
+  storageClassName: longhorn-gold
+  resources: { requests: { storage: 10Gi } }
+

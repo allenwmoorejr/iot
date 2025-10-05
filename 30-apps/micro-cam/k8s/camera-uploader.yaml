@@ -5,7 +5,7 @@ metadata:
   namespace: suite
 spec:
   accessModes: ["ReadWriteOnce"]
-  # storageClassName: longhorn   # uncomment after Longhorn install
+  storageClassName: longhorn   # uncomment after Longhorn install
   resources:
     requests:
       storage: 2Gi

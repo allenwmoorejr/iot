@@ -1,0 +1,8 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata: { name: camera-uploader-rwx }
+spec:
+  accessModes: [ ReadWriteMany ]
+  storageClassName: longhorn-gold   # your Longhorn SC
+  resources: { requests: { storage: 5Gi } }  # size >= current
+
