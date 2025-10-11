@@ -4,7 +4,7 @@ metadata:
   name: suite-apps
   namespace: suite
   annotations:
-    traefik.ingress.kubernetes.io/router.middlewares: suite-suite-redirect-https@kubernetescrd
+    traefik.ingress.kubernetes.io/router.middlewares: suite-redirect-https@kubernetescrd
 spec:
   ingressClassName: traefik
   tls:
