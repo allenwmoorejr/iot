@@ -6,7 +6,7 @@ metadata:
 spec:
   accessModes: ["ReadWriteOnce"]
   resources: { requests: { storage: 10Gi } }
-  storageClassName: local-path
+  storageClassName: longhorn
 ---
 apiVersion: v1
 kind: PersistentVolumeClaim
@@ -16,4 +16,4 @@ metadata:
 spec:
   accessModes: ["ReadWriteOnce"]
   resources: { requests: { storage: 2Gi } }
-  storageClassName: local-path
+  storageClassName: longhorn
