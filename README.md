@@ -23,3 +23,4 @@ Backups:
 Notes:
 - NodeSelectors mirror your layout (w0: devices & MQTT; m2: pihole, zigbee2mqtt; m3: magicmirror; w2: wyze).
 - If Traefik CRDs aren't installed, apply Traefik first or remove Middleware annotations temporarily.
+- See `docs/troubleshooting/homebridge-backup.md` for help clearing the noisy `homebridge-backup` PVC scheduling warnings.
