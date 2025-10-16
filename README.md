@@ -18,7 +18,14 @@ Then:
 
 Backups:
 - Run `kubectl -n suite create job --from=cronjob/homebridge-backup homebridge-backup-now` or apply `50-ops/homebridge-backup-now-job.yaml`.
-- Restore with `kubectl apply -f 50-ops/homebridge-restore-job.yaml` (expects `homebridge-*.tgz` in PVC `homebridge-backups`).
+- Restore with `kubectl apply -f 50-ops/homebridge-restore-job.yaml` (expects `homebridge-*.tgz` in PVC `homebridge-backups-longhorn`).
+
+Longhorn migration:
+- Scale Homebridge down before copying data: `kubectl -n suite scale deployment/homebridge --replicas=0`.
+- Apply the new PVCs: `kubectl apply -f 20-storage/homebridge-pvcs.yaml` (keeps the legacy `homebridge-*` PVCs in place).
+- Copy the data and backups once: `kubectl apply -f 50-ops/homebridge-migrate-to-longhorn-job.yaml` and wait for the job to complete, then delete it.
+- Deploy the workload pointing at the new volumes: `kubectl apply -f 30-apps/homebridge.yaml` and re-scale the deployment if needed.
+- After verifying everything works, the old `homebridge-data` and `homebridge-backups` PVCs can be deleted manually.
 
 Notes:
 - NodeSelectors mirror your layout (w0: devices & MQTT; m2: pihole, zigbee2mqtt; m3: magicmirror; w2: wyze).

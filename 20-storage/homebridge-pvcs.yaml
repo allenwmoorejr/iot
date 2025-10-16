@@ -1,7 +1,7 @@
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
-  name: homebridge-data
+  name: homebridge-data-longhorn
   namespace: suite
 spec:
   accessModes: ["ReadWriteOnce"]
@@ -11,7 +11,7 @@ spec:
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
-  name: homebridge-backups
+  name: homebridge-backups-longhorn
   namespace: suite
 spec:
   accessModes: ["ReadWriteOnce"]

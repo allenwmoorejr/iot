@@ -28,7 +28,7 @@ spec:
             - { name: data, mountPath: /homebridge }
       volumes:
         - name: data
-          persistentVolumeClaim: { claimName: homebridge-data }
+          persistentVolumeClaim: { claimName: homebridge-data-longhorn }
 ---
 apiVersion: v1
 kind: Service
