@@ -1,19 +1,19 @@
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
-  name: homebridge-data
+  name: homebridge-data-longhorn
   namespace: suite
 spec:
   accessModes: ["ReadWriteOnce"]
   resources: { requests: { storage: 10Gi } }
-  storageClassName: local-path
+  storageClassName: longhorn
 ---
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
-  name: homebridge-backups
+  name: homebridge-backups-longhorn
   namespace: suite
 spec:
   accessModes: ["ReadWriteOnce"]
   resources: { requests: { storage: 2Gi } }
-  storageClassName: local-path
+  storageClassName: longhorn

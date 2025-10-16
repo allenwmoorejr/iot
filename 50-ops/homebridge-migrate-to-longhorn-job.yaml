@@ -1,0 +1,44 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: homebridge-migrate-to-longhorn
+  namespace: suite
+spec:
+  template:
+    spec:
+      restartPolicy: OnFailure
+      containers:
+        - name: migrate
+          image: alpine:3.20
+          command: ["/bin/sh", "-c"]
+          args:
+            - |
+              set -euo pipefail
+              apk add --no-cache rsync > /dev/null
+              if [ ! -d /src-data ] || [ -z "$(ls -A /src-data 2>/dev/null)" ]; then
+                echo "No files found in legacy homebridge-data PVC, skipping copy"
+              elif [ -n "$(ls -A /dst-data 2>/dev/null)" ]; then
+                echo "homebridge-data-longhorn already populated, skipping copy"
+              else
+                rsync -a /src-data/ /dst-data/
+                echo "Copied data volume contents"
+              fi
+
+              if [ ! -d /src-backups ] || [ -z "$(ls -A /src-backups 2>/dev/null)" ]; then
+                echo "No files found in legacy homebridge-backups PVC, skipping copy"
+              elif [ -n "$(ls -A /dst-backups 2>/dev/null)" ]; then
+                echo "homebridge-backups-longhorn already populated, skipping copy"
+              else
+                rsync -a /src-backups/ /dst-backups/
+                echo "Copied backup volume contents"
+              fi
+          volumeMounts:
+            - { name: legacy-data, mountPath: /src-data, readOnly: true }
+            - { name: new-data,    mountPath: /dst-data }
+            - { name: legacy-backups, mountPath: /src-backups, readOnly: true }
+            - { name: new-backups,    mountPath: /dst-backups }
+      volumes:
+        - { name: legacy-data,     persistentVolumeClaim: { claimName: homebridge-data } }
+        - { name: new-data,        persistentVolumeClaim: { claimName: homebridge-data-longhorn } }
+        - { name: legacy-backups,  persistentVolumeClaim: { claimName: homebridge-backups } }
+        - { name: new-backups,     persistentVolumeClaim: { claimName: homebridge-backups-longhorn } }
