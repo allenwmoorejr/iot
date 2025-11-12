@@ -1,0 +1,9 @@
+[
+  {
+    "id": "mm-presence-flow",
+    "type": "tab",
+    "label": "MM Presence Dimmer",
+    "disabled": false,
+    "info": "POST /mm/dim with {\"on\":true|false} to toggle dim class via MMM-Remote-Control"
+  }
+]

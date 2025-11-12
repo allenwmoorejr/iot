@@ -1,0 +1,19 @@
+{{- $ns := default "suite" .Values.namespace -}}
+{{- $pvc := .Values.pvc | default dict -}}
+{{- if or (not (hasKey $pvc "enabled")) ($pvc.enabled) }}
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ default "magicmirror-data" $pvc.name }}
+  namespace: {{ $ns }}
+spec:
+  accessModes:
+{{- range (default (list "ReadWriteMany") $pvc.accessModes) }}
+  - {{ . }}
+{{- end }}
+  storageClassName: {{ default "longhorn" $pvc.storageClassName }}
+  resources:
+    requests:
+      storage: {{ default "5Gi" $pvc.size }}
+{{- end }}
+

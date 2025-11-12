@@ -1,0 +1,81 @@
+[
+  {
+    "id": "mm-presence-flow",
+    "type": "tab",
+    "label": "MM Presence Dimmer",
+    "disabled": false,
+    "info": "POST /dim with {\"on\":true|false} to toggle dim class via MMM-Remote-Control"
+  },
+  {
+    "id": "http-in",
+    "type": "http in",
+    "z": "mm-presence-flow",
+    "name": "Dim endpoint",
+    "url": "/mm/dim",
+    "method": "post",
+    "swaggerDoc": "",
+    "x": 160,
+    "y": 160,
+    "wires": [
+      [
+        "func"
+      ]
+    ]
+  },
+  {
+    "id": "func",
+    "type": "function",
+    "z": "mm-presence-flow",
+    "name": "Build request",
+    "func": "const on = !!msg.payload.on; msg.method='POST';\nmsg.headers={'Content-Type':'application/json'};\nmsg.url = 'http://magicmirror-server.suite.svc.cluster.local:8080/remote?action=MODULE_TOGGLE&module=MMM-Dummy&force='+ (on?'show':'hide');\nreturn msg;",
+    "outputs": 1,
+    "noerr": 0,
+    "x": 360,
+    "y": 160,
+    "wires": [
+      [
+        "http-req",
+        "http-resp"
+      ]
+    ]
+  },
+  {
+    "id": "http-req",
+    "type": "http request",
+    "z": "mm-presence-flow",
+    "name": "Call MagicMirror",
+    "method": "use",
+    "ret": "txt",
+    "paytoqs": "ignore",
+    "x": 590,
+    "y": 140,
+    "wires": [
+      [
+        "debug"
+      ]
+    ]
+  },
+  {
+    "id": "http-resp",
+    "type": "http response",
+    "z": "mm-presence-flow",
+    "name": "",
+    "x": 590,
+    "y": 200,
+    "wires": []
+  },
+  {
+    "id": "debug",
+    "type": "debug",
+    "z": "mm-presence-flow",
+    "name": "resp",
+    "active": true,
+    "tosidebar": true,
+    "console": false,
+    "tostatus": false,
+    "complete": "true",
+    "x": 790,
+    "y": 140,
+    "wires": []
+  }
+]

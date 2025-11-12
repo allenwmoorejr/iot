@@ -1,0 +1,82 @@
+# --- Global toggles ----------------------------------------------------------
+namespace: suite
+
+image:
+  repository: ghcr.io/bastilimbach/docker-magicmirror # replace with your image if different
+  tag: latest
+  pullPolicy: IfNotPresent
+
+replicaCount: 1   # Set to 2+ after verifying & with RWX PVC
+
+resources:
+  requests:
+    cpu: 200m
+    memory: 256Mi
+  limits:
+    cpu: "1"
+    memory: 768Mi
+
+service:
+  type: ClusterIP
+  port: 8080
+
+ingress:
+  enabled: true
+  className: "traefik"
+  host: "mirror.suite.home.arpa"
+  tls:
+    enabled: true
+    secretName: "suite-home-arpa-tls"
+  annotations:
+    traefik.ingress.kubernetes.io/router.entrypoints: "web,websecure"
+    traefik.ingress.kubernetes.io/router.middlewares: "suite-redirect-https@kubernetescrd"
+
+traefikAllowNetworkPolicy:
+  enabled: true
+  traefikNamespace: kube-system
+  traefikSelector:
+    app.kubernetes.io/name: traefik
+
+pvc:
+  enabled: true
+  name: magicmirror-data
+  storageClassName: longhorn
+  size: 5Gi
+  accessModes: [ "ReadWriteMany" ]
+
+securityContext:
+  # IMPORTANT: do not set pod-level runAsNonRoot, initContainers may require root
+  fsGroup: 1000
+  fsGroupChangePolicy: OnRootMismatch
+
+env:
+  MM_ADDRESS: "0.0.0.0"
+  MM_PORT: "8080"
+
+config:
+  city: "Alabaster"
+  owmApiKey: "3adb093fcfa71edc4378b5e2fea66b6f"
+  icsUrl: "<ICS_URL>"
+  # Scrypted public HLS URL for your doorbell camera (or snapshot.jpg if you prefer an image)
+  scryptedHlsUrl: "https://scrypted.suite.home.arpa/public/cameras/<YOUR_DOORBELL>/hls.m3u8"
+  # If you prefer snapshot tile instead of live, set useLiveCamera: false
+  useLiveCamera: true
+
+spotify:
+  enabled: true
+  clientId: "4e108b1ad6184b4fa3be7d07ce11ad0"
+  clientSecret: "e7777578e2fd4dc8a8a80fd62c86ade7"
+  # Access & refresh tokens must be generated once. See README in this chart.
+  accessToken: ""
+  refreshToken: ""
+
+hpa:
+  enabled: false
+  minReplicas: 2
+  maxReplicas: 4
+  cpu:
+    targetAverageUtilization: 60
+
+# Extra labels to add to pod template (e.g., to grant egress via your existing policies)
+podLabels:
+  allow-egress: "internet"

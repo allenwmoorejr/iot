@@ -1,0 +1,41 @@
+########################################
+# Key pair (re-uses your local public key)
+########################################
+resource "aws_key_pair" "main" {
+  key_name   = var.aws_key_name
+  public_key = file("~/.ssh/${var.aws_key_name}.pub")
+}
+
+########################################
+# Default VPC + subnets
+########################################
+data "aws_vpc" "default" { default = true }
+
+data "aws_subnets" "in_default_vpc" {
+  filter { name = "vpc-id" values = [data.aws_vpc.default.id] }
+}
+
+########################################
+# EC2 instance – worker
+########################################
+resource "aws_instance" "cloud_worker" {
+  ami                         = data.aws_ami.ubuntu_jammy.id
+  instance_type               = var.aws_instance_type
+  subnet_id                   = local.worker_subnet_id
+  key_name                    = aws_key_pair.main.key_name
+  vpc_security_group_ids      = [aws_security_group.cloud_worker_sg.id]
+  associate_public_ip_address = true
+
+  user_data = templatefile("${path.module}/user_data_cloud_worker.tpl", {
+    worker_name         = var.worker_name
+    k3s_url_over_ts     = local.k3s_url_over_ts
+    k3s_token           = var.k3s_token
+    tailscale_auth_key  = var.tailscale_auth_key
+  })
+
+  tags = merge(var.tags, {
+    Name = var.worker_name
+    Role = "k3s-cloud-worker"
+  })
+}
+

@@ -1,0 +1,48 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mirror-content-smb
+  namespace: suite
+spec:
+  replicas: 1
+  selector: { matchLabels: { app: mirror-content-smb } }
+  template:
+    metadata: { labels: { app: mirror-content-smb } }
+    spec:
+      containers:
+      - name: samba
+        image: dperson/samba:latest
+        args:
+          - "-s"
+          - "mirror;/share;yes;no;no;all"
+          - "-u"
+          - "wayne;changeme"
+        ports:
+          - containerPort: 445
+            name: smb
+          - containerPort: 139
+            name: netbios
+        securityContext:
+          capabilities:
+            add: ["CAP_SYS_ADMIN","NET_ADMIN"]
+        volumeMounts:
+          - name: data
+            mountPath: /share
+      volumes:
+      - name: data
+        persistentVolumeClaim: { claimName: magicmirror-data }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: mirror-content-smb
+  namespace: suite
+spec:
+  selector: { app: mirror-content-smb }
+  ports:
+  - name: smb
+    port: 445
+    targetPort: 445
+  - name: netbios
+    port: 139
+    targetPort: 139

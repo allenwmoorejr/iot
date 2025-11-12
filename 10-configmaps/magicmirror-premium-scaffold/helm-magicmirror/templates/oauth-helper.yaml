@@ -1,0 +1,60 @@
+{{- if .Values.oauthHelper.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: spotify-callback
+  namespace: {{ .Values.namespace }}
+  labels:
+    app: spotify-callback
+spec:
+  replicas: {{ .Values.oauthHelper.replicas }}
+  selector:
+    matchLabels: { app: spotify-callback }
+  template:
+    metadata:
+      labels: { app: spotify-callback }
+    spec:
+      containers:
+      - name: echo
+        image: {{ .Values.oauthHelper.image | quote }}
+        args: ["-addr=:8080"]
+        ports:
+        - containerPort: 8080
+          name: http
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: spotify-callback
+  namespace: {{ .Values.namespace }}
+spec:
+  selector: { app: spotify-callback }
+  ports:
+  - name: http
+    port: 8080
+    targetPort: 8080
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: spotify-callback
+  namespace: {{ .Values.namespace }}
+  annotations:
+    traefik.ingress.kubernetes.io/router.entrypoints: web,websecure
+spec:
+  ingressClassName: traefik
+  rules:
+  - host: {{ .Values.oauthHelper.host | quote }}
+    http:
+      paths:
+      - path: {{ .Values.oauthHelper.path | quote }}
+        pathType: Prefix
+        backend:
+          service:
+            name: spotify-callback
+            port:
+              number: 8080
+  tls:
+  - hosts: [ {{ .Values.oauthHelper.host | quote }} ]
+    secretName: {{ .Values.ingress.tls.secretName }}
+{{- end }}

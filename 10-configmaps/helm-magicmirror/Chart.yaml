@@ -1,0 +1,6 @@
+apiVersion: v2
+name: magicmirror-premium
+description: Premium MagicMirror with Longhorn PVC, Spotify, Scrypted live camera, Traefik Ingress, and luxe theme.
+type: application
+version: 0.1.0
+appVersion: "2.32.0"

@@ -1,0 +1,39 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: magicmirror-config
+  namespace: suite
+data:
+  config.js: |
+    const env = (k, d="") => (process.env[k] || d);
+
+    let config = {
+      address: "0.0.0.0",
+      port: 8080,
+      ipWhitelist: [],
+      language: "en",
+      timeFormat: 24,
+      units: "metric",
+
+      modules: [
+        { module: "clock",    position: "top_left" },
+        { module: "calendar", position: "top_left",  config: { calendars: [] } },
+        { module: "newsfeed", position: "bottom_bar", config: { feeds: [] } },
+
+        {
+          module: "MMM-NowPlayingOnSpotify",
+          position: "bottom_bar",
+          config: {
+            clientID:      env("SPOTIFY_CLIENT_ID"),
+            clientSecret:  env("SPOTIFY_CLIENT_SECRET"),
+            accessToken:   env("SPOTIFY_ACCESS_TOKEN"),
+            refreshToken:  env("SPOTIFY_REFRESH_TOKEN"),
+            updateInterval: 1000,
+            showCoverArt:  true
+          }
+        }
+      ]
+    };
+
+    if (typeof module !== "undefined") { module.exports = config; }
+

@@ -1,0 +1,29 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: magicmirror-theme
+  namespace: {{ .Values.namespace }}
+data:
+  custom.css: |
+    :root {
+      --fg: #e8eef6;
+      --fg-dim: #a5b3c2;
+      --glass-bg: rgba(12, 18, 28, 0.35);
+      --glass-brd: rgba(255,255,255,0.08);
+    }
+    html, body { font-family: "SF Pro Display","Inter",system-ui; color: var(--fg); }
+    .region { text-shadow: 0 1px 2px rgba(0,0,0,.25); }
+    .region.top_left .module, .region.top_right .module {
+      background: var(--glass-bg); border: 1px solid var(--glass-brd); border-radius: 16px;
+      padding: 10px 14px; margin: 10px; backdrop-filter: blur(8px);
+    }
+    .region.middle_center .module {
+      background: var(--glass-bg); border: 1px solid var(--glass-brd); border-radius: 18px;
+      padding: 12px 16px; margin-top: 6px; backdrop-filter: blur(10px);
+    }
+    .clock .time { font-size: 3.2rem; font-weight: 700; letter-spacing: .5px; }
+    .weather .current .temp { font-size: 2.0rem; font-weight: 600; }
+    .dimmed, .normal { color: var(--fg-dim)!important; }
+    .newsfeed .newsfeed-title { color: var(--fg-dim); font-weight: 600; margin-right: .75rem; }
+    .MMM-Buttons .button { background: rgba(255,255,255,0.06); border-radius: 12px; padding: 6px 10px; margin: 0 6px; }
+    .MMM-Buttons .button:hover { background: rgba(255,255,255,0.12); transform: translateY(-1px); transition: all .2s ease; }

@@ -1,0 +1,27 @@
+{{- $ns := default "suite" .Values.namespace -}}
+{{- $ing := .Values.ingress | default dict -}}
+{{- if or (not (hasKey $ing "enabled")) ($ing.enabled | default true) }}
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: mirror-ingress
+  namespace: {{ $ns }}
+  annotations:
+{{ toYaml (default (dict "traefik.ingress.kubernetes.io/router.entrypoints" "web,websecure") $ing.annotations) | indent 4 }}
+spec:
+  ingressClassName: {{ default "traefik" $ing.className | quote }}
+  rules:
+    - host: {{ default "mirror.suite.home.arpa" $ing.host | quote }}
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: magicmirror-hostport
+                port: { name: ui }
+  tls:
+    - hosts: [ {{ default "mirror.suite.home.arpa" $ing.host | quote }} ]
+      secretName: {{ default "suite-home-arpa-tls" (get $ing.tls "secretName") }}
+{{- end }}
+

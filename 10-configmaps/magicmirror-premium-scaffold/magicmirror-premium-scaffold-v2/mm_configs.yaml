@@ -1,0 +1,113 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: magicmirror-config
+  namespace: suite
+data:
+  config.js: |
+    let config = {
+      address: "0.0.0.0",
+      port: 8080,
+      ipWhitelist: [],               // Keep kubelet probes & LAN happy
+      language: "en",
+      timeFormat: 12,
+      units: "imperial",
+
+      // Rotate sections with Carousel
+      // Page 1: Time + Weather + Calendar
+      // Page 2: Spotify + Camera
+      modules: [
+        /* ----- Page 1 ----- */
+        { module: "clock", position: "top_left" },
+        { module: "weather", position: "top_right", config: { type: "current" } },
+        { module: "weather", position: "top_right", config: { type: "forecast" } },
+        { module: "calendar",
+          position: "top_left",
+          config: {
+            maximumEntries: 7,
+            calendars: [
+              { url: "webcal://example.com/whatever.ics" }
+            ]
+          }
+        },
+
+        /* ----- Page 2 ----- */
+        // Spotify Now Playing (uses env from Secret via Helm)
+        {
+          module: "MMM-NowPlayingOnSpotify",
+          position: "bottom_left",
+          config: {
+            clientID: process.env.SPOTIFY_CLIENT_ID,
+            clientSecret: process.env.SPOTIFY_CLIENT_SECRET,
+            accessToken: process.env.SPOTIFY_ACCESS_TOKEN || "",
+            refreshToken: process.env.SPOTIFY_REFRESH_TOKEN || "",
+            updateInterval: 5,
+            idleInterval: 30,
+            displayCurrentSong: true,
+            displayCoverArt: true,
+            coverSize: 180,
+            showBottomBar: true,
+            showArtist: true,
+            showAlbum: true,
+            useFadeEffect: true
+          }
+        },
+
+        // Camera HLS tile (simple). If you prefer RTSP for low latency, see swap below.
+        {
+          module: "MMM-HTMLBox",
+          position: "bottom_right",
+          config: {
+            width: "460px",
+            height: "260px",
+            html:
+              '<video ' +
+              'src="https://scrypted.suite.home.arpa/public/cameras/doorbell/hls.m3u8" ' +
+              'autoplay muted playsinline loop controls ' +
+              'width="440" height="248" ' +
+              'style="border-radius:12px; box-shadow:0 10px 24px rgba(0,0,0,0.25)"></video>'
+          }
+        },
+
+        /* ----- Page logic & scheduling ----- */
+        {
+          module: "MMM-Carousel",
+          position: "bottom_bar",
+          config: {
+            mode: "slides",             // rotate sets of modules
+            showPageIndicators: true,
+            transitionInterval: 25,     // seconds
+            slides: {
+              // Pages must list modules by name (and position)
+              "pageOne": [
+                "clock", "weather", "calendar"
+              ],
+              "pageTwo": [
+                "MMM-NowPlayingOnSpotify", "MMM-HTMLBox"
+              ]
+            }
+          }
+        },
+
+        // Night mode / soft dim & hide Spotify when idle
+        {
+          module: "MMM-ModuleScheduler",
+          config: {
+            notification_schedule: [
+              // Dim at night
+              { notification: "DIM_SCREEN", schedule: "30 22 * * *" },
+              { notification: "BRIGHTEN_SCREEN", schedule: "0 6 * * *" }
+            ],
+            // Example of hiding Spotify from 1am–6am:
+            module_schedule: [
+              { module: "MMM-NowPlayingOnSpotify", from: "01:00", to: "06:00", hide: true }
+            ]
+          }
+        }
+      ],
+
+      // Add your own custom key mappings or serverOnly tweaks if needed
+    };
+
+    if (typeof module !== "undefined") { module.exports = config; }
+

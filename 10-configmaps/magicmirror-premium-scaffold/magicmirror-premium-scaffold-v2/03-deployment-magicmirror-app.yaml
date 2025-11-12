@@ -1,0 +1,120 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: magicmirror-app
+  namespace: suite
+  labels:
+    app: magicmirror-app
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: magicmirror-app
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 0
+      maxSurge: 1
+  template:
+    metadata:
+      labels:
+        app: magicmirror-app
+        allow-egress: internet     # matches your existing "allow-egress-internet" policy
+    spec:
+      terminationGracePeriodSeconds: 15
+
+      # Persist /opt/magic_mirror/modules on Longhorn
+      volumes:
+      - name: mm-modules
+        persistentVolumeClaim:
+          claimName: mm-modules-pvc
+      - name: mm-config
+        configMap:
+          name: magicmirror-config
+
+      # Init: clone Spotify module, then install deps (idempotent)
+      initContainers:
+      - name: seed-modules
+        image: alpine/git:2.45.2
+        command: ["/bin/sh","-lc"]
+        args:
+          - |
+            set -euo pipefail
+            mkdir -p /opt/magic_mirror/modules
+            if [ ! -d /opt/magic_mirror/modules/MMM-NowPlayingOnSpotify ]; then
+              git clone --depth=1 https://github.com/raywo/MMM-NowPlayingOnSpotify.git \
+                /opt/magic_mirror/modules/MMM-NowPlayingOnSpotify
+            fi
+        volumeMounts:
+        - name: mm-modules
+          mountPath: /opt/magic_mirror/modules
+
+      - name: install-module-deps
+        image: node:20-bookworm-slim
+        workingDir: /opt/magic_mirror/modules/MMM-NowPlayingOnSpotify
+        env:
+        - name: npm_config_fund
+          value: "false"
+        - name: npm_config_audit
+          value: "false"
+        command: ["/bin/sh","-lc"]
+        args:
+          - |
+            set -euo pipefail
+            npm ci --omit=dev || npm install --omit=dev
+        volumeMounts:
+        - name: mm-modules
+          mountPath: /opt/magic_mirror/modules
+
+      containers:
+      - name: magicmirror
+        image: bastilimbach/docker-magicmirror:latest
+        imagePullPolicy: IfNotPresent
+        ports:
+        - name: http
+          containerPort: 8080
+
+        # Health checks
+        readinessProbe:
+          httpGet: { path: "/", port: 8080 }
+          initialDelaySeconds: 5
+          periodSeconds: 5
+          timeoutSeconds: 2
+          failureThreshold: 6
+        livenessProbe:
+          httpGet: { path: "/", port: 8080 }
+          initialDelaySeconds: 10
+          periodSeconds: 10
+          timeoutSeconds: 2
+          failureThreshold: 6
+
+        env:
+        - name: NODE_ENV
+          value: "production"
+        - name: MM_CONFIG_FILE
+          value: /opt/magic_mirror/config/config.js
+        - name: SPOTIFY_CLIENT_ID
+          valueFrom: { secretKeyRef: { name: spotify-credentials, key: clientId } }
+        - name: SPOTIFY_CLIENT_SECRET
+          valueFrom: { secretKeyRef: { name: spotify-credentials, key: clientSecret } }
+        - name: SPOTIFY_REFRESH_TOKEN
+          valueFrom: { secretKeyRef: { name: spotify-credentials, key: refreshToken } }
+
+        volumeMounts:
+        - name: mm-modules
+          mountPath: /opt/magic_mirror/modules
+        - name: mm-config
+          mountPath: /opt/magic_mirror/config/config.js
+          subPath: config.js
+
+        resources:
+          requests:
+            cpu: 50m
+            memory: 128Mi
+          limits:
+            memory: 512Mi
+
+      # Make sure the PVC is writable by the container even if UID != 0
+      securityContext:
+        fsGroup: 1000
+

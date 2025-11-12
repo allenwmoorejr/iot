@@ -46,4 +46,3 @@ provider "cloudflare" {
   # If you use Cloudflare, set CLOUDFLARE_API_TOKEN env var or var.cloudflare_api_token
   api_token = try(var.cloudflare_api_token, null)
 }
-

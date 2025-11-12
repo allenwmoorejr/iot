@@ -1,0 +1,106 @@
+{{- $ns := default "suite" .Values.namespace -}}
+{{- $pvc := .Values.pvc | default dict -}}
+{{- $img := .Values.image | default dict -}}
+{{- $env := .Values.env | default dict -}}
+{{- $sc  := .Values.securityContext | default dict -}}
+{{- $res := .Values.resources | default (dict
+      "requests" (dict "cpu" "200m" "memory" "256Mi")
+      "limits"   (dict "cpu" "1"    "memory" "768Mi")) -}}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: magicmirror-server
+  namespace: {{ $ns }}
+  labels:
+    {{- include "mm.labels" . | nindent 4 }}
+spec:
+  replicas: {{ default 1 .Values.replicaCount }}
+  selector: { matchLabels: { app: magicmirror-server } }
+  template:
+    metadata:
+      labels:
+        app: magicmirror-server
+        {{- include "mm.labels" . | nindent 8 }}
+        {{- if .Values.podLabels }}
+{{ toYaml .Values.podLabels | indent 8 }}
+        {{- end }}
+    spec:
+      securityContext:
+        fsGroup: {{ default 1000 $sc.fsGroup }}
+        fsGroupChangePolicy: {{ default "OnRootMismatch" $sc.fsGroupChangePolicy | quote }}
+
+      initContainers:
+      # 1) Copy the image's built-in default modules into the shared volume
+      - name: copy-default-modules
+        image: "{{ default "bastilimbach/docker-magicmirror" $img.repository }}:{{ default "latest" $img.tag }}"
+        imagePullPolicy: {{ default "IfNotPresent" $img.pullPolicy }}
+        command: ["/bin/sh","-lc"]
+        args:
+          - >
+            set -e;
+            if [ -d /opt/magic_mirror/modules/default ]; then
+              cp -a /opt/magic_mirror/modules/. /work/modules/;
+            else
+              echo "WARN: default modules not found in image path; continuing";
+            fi
+        volumeMounts:
+          - { name: mm-modules, mountPath: /work/modules }
+
+      # 2) Clone extra modules into the same shared volume
+      - name: seed-modules
+        image: alpine/git:2.45.2
+        command: ["/bin/sh","-lc"]
+        args:
+          - >
+            set -e;
+            mkdir -p /work/modules;
+            cd /work/modules;
+            if [ ! -d MMM-NowPlayingOnSpotify ]; then git clone --depth=1 https://github.com/raywo/MMM-NowPlayingOnSpotify.git; fi;
+            if [ ! -d MMM-RTSPStream ]; then git clone --depth=1 https://github.com/shbatm/MMM-RTSPStream.git; fi;
+        volumeMounts:
+          - { name: mm-modules, mountPath: /work/modules }
+
+      containers:
+      - name: magicmirror
+        image: "{{ default "bastilimbach/docker-magicmirror" $img.repository }}:{{ default "latest" $img.tag }}"
+        imagePullPolicy: {{ default "IfNotPresent" $img.pullPolicy }}
+        env:
+          - name: MM_ADDRESS
+            value: {{ default "0.0.0.0" $env.MM_ADDRESS | quote }}
+          - name: MM_PORT
+            value: {{ default "8080" $env.MM_PORT | quote }}
+          {{- if .Values.spotify.enabled | default true }}
+          - name: SPOTIFY_CLIENT_ID
+            valueFrom: { secretKeyRef: { name: spotify-credentials, key: clientId } }
+          - name: SPOTIFY_CLIENT_SECRET
+            valueFrom: { secretKeyRef: { name: spotify-credentials, key: clientSecret } }
+          - name: SPOTIFY_ACCESS_TOKEN
+            valueFrom: { secretKeyRef: { name: spotify-credentials, key: accessToken } }
+          - name: SPOTIFY_REFRESH_TOKEN
+            valueFrom: { secretKeyRef: { name: spotify-credentials, key: refreshToken } }
+          {{- end }}
+        ports: [{ name: ui, containerPort: 8080 }]
+        readinessProbe: { httpGet: { path: "/", port: 8080 }, initialDelaySeconds: 5, periodSeconds: 5, timeoutSeconds: 2, failureThreshold: 6 }
+        livenessProbe:  { httpGet: { path: "/", port: 8080 }, initialDelaySeconds: 20, periodSeconds: 10, timeoutSeconds: 2, failureThreshold: 3 }
+        volumeMounts:
+          - { name: cfg,        mountPath: /opt/magic_mirror/config, readOnly: true }
+          - { name: theme,      mountPath: /opt/magic_mirror/css,    readOnly: true }
+          - { name: mm-modules, mountPath: /opt/magic_mirror/modules }
+          - { name: data,       mountPath: /data }
+        resources:
+{{ toYaml $res | indent 10 }}
+
+      volumes:
+        - name: cfg
+          configMap: { name: magicmirror-config, items: [ { key: config.js, path: config.js } ] }
+        - name: theme
+          configMap: { name: magicmirror-theme, items: [ { key: custom.css, path: custom.css } ] }
+        - name: mm-modules
+          emptyDir: {}
+        - name: data
+          {{- if or (not (hasKey $pvc "enabled")) ($pvc.enabled) }}
+          persistentVolumeClaim: { claimName: {{ default "magicmirror-data" $pvc.name }} }
+          {{- else }}
+          emptyDir: {}
+          {{- end }}
+

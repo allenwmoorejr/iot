@@ -1,0 +1,60 @@
+{{- $ns := default "suite" .Values.namespace -}}
+{{- $oauth := .Values.oauthHelper | default dict -}}
+{{- $ing := .Values.ingress | default dict -}}
+{{- if or (not (hasKey $oauth "enabled")) ($oauth.enabled) }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: spotify-callback
+  namespace: {{ $ns }}
+  labels: { app: spotify-callback }
+spec:
+  replicas: {{ default 1 $oauth.replicas }}
+  selector: { matchLabels: { app: spotify-callback } }
+  template:
+    metadata: { labels: { app: spotify-callback } }
+    spec:
+      containers:
+      - name: echo
+        image: {{ default "ghcr.io/imroc/echo-server:latest" $oauth.image | quote }}
+        args: ["-addr=:8080"]
+        ports: [{ containerPort: 8080, name: http }]
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: spotify-callback
+  namespace: {{ $ns }}
+spec:
+  selector: { app: spotify-callback }
+  ports:
+  - name: http
+    port: 8080
+    targetPort: 8080
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: spotify-callback
+  namespace: {{ $ns }}
+  annotations:
+    traefik.ingress.kubernetes.io/router.entrypoints: web,websecure
+    {{- $ann := (get $oauth "annotations") | default dict -}}
+{{ toYaml $ann | indent 4 }}
+spec:
+  ingressClassName: {{ default "traefik" $ing.className | quote }}
+  rules:
+  - host: {{ default "mirror.suite.home.arpa" $oauth.host | default $ing.host | quote }}
+    http:
+      paths:
+      - path: {{ default "/spotify/callback" $oauth.path | quote }}
+        pathType: Prefix
+        backend:
+          service:
+            name: spotify-callback
+            port: { number: 8080 }
+  tls:
+  - hosts: [ {{ default "mirror.suite.home.arpa" $oauth.host | default $ing.host | quote }} ]
+    secretName: {{ default "suite-home-arpa-tls" (get (default dict $ing.tls) "secretName") }}
+{{- end }}
+

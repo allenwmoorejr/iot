@@ -1,0 +1,20 @@
+namespace: suite
+
+ingress:
+  host: mirror.suite.home.arpa
+  tls:
+    secretName: suite-home-arpa-tls
+
+config:
+  city: "Alabaster"
+  owmApiKey: "3adb093fcfa71edc4378b5e2fea66b6f"
+  icsUrl: "https://example.com/calendar.ics"
+  scryptedHlsUrl: "https://scrypted.suite.home.arpa/public/cameras/doorbell/hls.m3u8"
+
+spotify:
+  enabled: true
+  clientId: "4e108b1ad6184b4fa3be7d07ce11ad09"
+  clientSecret: "e7777578e2fd4dc8a8a80fd62c86ade7"
+  accessToken: ""
+  refreshToken: ""
+

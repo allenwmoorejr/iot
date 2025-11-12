@@ -1,18 +1,15 @@
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
-  name: magicmirror
+  name: mirror-ingress
   namespace: suite
-  annotations:
-    traefik.ingress.kubernetes.io/router.entrypoints: web,websecure
-    traefik.ingress.kubernetes.io/router.middlewares: suite-redirect-https@kubernetescrd
 spec:
   ingressClassName: traefik
   tls:
-    - secretName: suite-home-arpa-tls
-      hosts: ["magicmirror.suite.home.arpa"]
+    - hosts: [ "mirror.suite.home.arpa" ]
+      secretName: suite-home-arpa-tls
   rules:
-    - host: magicmirror.suite.home.arpa
+    - host: mirror.suite.home.arpa
       http:
         paths:
           - path: /
@@ -22,3 +19,4 @@ spec:
                 name: magicmirror-hostport
                 port:
                   number: 8080
+

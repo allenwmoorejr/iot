@@ -1,0 +1,26 @@
+{{- $ns := default "suite" .Values.namespace -}}
+{{- $np := .Values.traefikAllowNetworkPolicy | default dict -}}
+{{- if or (not (hasKey $np "enabled")) ($np.enabled) }}
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-traefik-to-magicmirror
+  namespace: {{ $ns }}
+spec:
+  podSelector:
+    matchLabels:
+      app: magicmirror-server
+  policyTypes: ["Ingress"]
+  ingress:
+  - from:
+    - namespaceSelector:
+        matchLabels:
+          kubernetes.io/metadata.name: {{ default "kube-system" $np.traefikNamespace }}
+      podSelector:
+        matchLabels:
+{{ toYaml (default (dict "app.kubernetes.io/name" "traefik") $np.traefikSelector) | indent 10 }}
+    ports:
+    - protocol: TCP
+      port: 8080
+{{- end }}
+

@@ -1,0 +1,23 @@
+{{- if .Values.traefikAllowNetworkPolicy.enabled }}
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-traefik-to-magicmirror
+  namespace: {{ .Values.namespace }}
+spec:
+  podSelector:
+    matchLabels:
+      app: magicmirror-server
+  policyTypes: ["Ingress"]
+  ingress:
+  - from:
+    - namespaceSelector:
+        matchLabels:
+          kubernetes.io/metadata.name: {{ .Values.traefikAllowNetworkPolicy.traefikNamespace }}
+      podSelector:
+        matchLabels:
+{{ toYaml .Values.traefikAllowNetworkPolicy.traefikSelector | indent 10 }}
+    ports:
+    - protocol: TCP
+      port: 8080
+{{- end }}

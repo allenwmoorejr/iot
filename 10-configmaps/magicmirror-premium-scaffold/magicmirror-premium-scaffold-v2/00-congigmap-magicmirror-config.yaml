@@ -1,0 +1,36 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: magicmirror-config
+  namespace: suite
+data:
+  config.js: |
+    let config = {
+      address: "0.0.0.0",
+      port: 8080,
+      ipWhitelist: [],           // Traefik provides external access control
+      language: "en",
+      timeFormat: 24,
+      units: "metric",
+      modules: [
+        { module: "clock", position: "top_left" },
+        { module: "calendar", position: "top_left", config: { calendars: [] } },
+        { module: "newsfeed", position: "bottom_bar", config: { feeds: [] } },
+
+        // Spotify — reads credentials from env injected into the container
+        {
+          module: "MMM-NowPlayingOnSpotify",
+          position: "bottom_right",
+          config: {
+            clientID: process.env.SPOTIFY_CLIENT_ID,
+            clientSecret: process.env.SPOTIFY_CLIENT_SECRET,
+            refreshToken: process.env.SPOTIFY_REFRESH_TOKEN,
+            updateInterval: 10,
+            idleInterval: 60,
+            showCoverArt: true
+          }
+        }
+      ]
+    };
+    if (typeof module !== "undefined") { module.exports = config; }
+

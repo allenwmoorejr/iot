@@ -1,0 +1,74 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: magicmirror-config
+  namespace: {{ .Values.namespace }}
+data:
+  config.js: |
+    let config = {
+      address: "0.0.0.0",
+      port: 8080,
+      ipWhitelist: [],
+      language: "en",
+      timeFormat: 12,
+      units: "imperial",
+      customCss: "/data/custom.css",
+      modules: [
+        { module: "clock", position: "top_left", config: { displaySeconds: false, showPeriod: true, showDate: true } },
+        { module: "weather", position: "top_left", config: { type: "current", location: "{{ .Values.config.city }}", apiKey: "{{ .Values.config.owmApiKey }}" } },
+        { module: "weather", position: "top_left", config: { type: "forecast", location: "{{ .Values.config.city }}", apiKey: "{{ .Values.config.owmApiKey }}", maxNumberOfDays: 5, showRainAmount: true } },
+
+        { module: "calendar", position: "top_right",
+          config: { colored: true, maximumEntries: 8,
+            calendars: [ { url: "{{ .Values.config.icsUrl }}", symbol: "calendar", color: "#9cd2ff" } ]
+          }
+        },
+
+        {{- if .Values.spotify.enabled }}
+        { module: "MMM-NowPlayingOnSpotify", position: "middle_center",
+          config: {
+            clientID: "{{ .Values.spotify.clientId }}",
+            clientSecret: "{{ .Values.spotify.clientSecret }}",
+            accessToken: "{{ .Values.spotify.accessToken }}",
+            refreshToken: "{{ .Values.spotify.refreshToken }}",
+            showCoverArt: true, useFadeAnimation: true
+          }
+        },
+        {{- end }}
+
+        {{- if .Values.config.useLiveCamera }}
+        { module: "MMM-RTSPStream", position: "right",
+          config: {
+            autoPlay: true, muted: true, width: 420, height: 236,
+            stream1: { name: "Doorbell", url: "{{ .Values.config.scryptedHlsUrl }}", frameRate: "30" }
+          }
+        },
+        {{- else }}
+        { module: "MMM-iFrame", position: "right", config: {
+            url: "{{ .Values.config.scryptedHlsUrl | replace "hls.m3u8" "snapshot.jpg" }}",
+            updateInterval: 10000, width: "420", height: "236", frameWidth: 0
+          }
+        },
+        {{- end }}
+
+        { module: "MMM-Buttons", position: "bottom_bar",
+          config: {
+            buttons: [
+              { name: "Movie",  symbol: "film",   action: "https://homebridge.suite.home.arpa/api/webhook/scene/movie" },
+              { name: "Chill",  symbol: "music",  action: "https://homebridge.suite.home.arpa/api/webhook/scene/chill" },
+              { name: "Away",   symbol: "lock",   action: "https://homebridge.suite.home.arpa/api/webhook/scene/away"  }
+            ],
+            styled: true
+          }
+        },
+
+        { module: "newsfeed", position: "bottom_bar", config: {
+            feeds: [
+              { title: "Tech", url: "https://rss.nytimes.com/services/xml/rss/nyt/Technology.xml" },
+              { title: "World", url: "https://feeds.bbci.co.uk/news/world/rss.xml" }
+            ],
+            showSourceTitle: true, showPublishDate: false, broadcastNewsFeeds: true, broadcastNewsUpdates: true
+        }}
+      ]
+    };
+    if (typeof module !== "undefined") { module.exports = config; }

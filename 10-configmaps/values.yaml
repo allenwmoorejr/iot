@@ -1,0 +1,8 @@
+namespace: suite
+
+spotify:
+  clientId: "4e108b1ad6184b4fa3be7d07ce11ad09"
+  clientSecret: "e7777578e2fd4dc8a8a80fd62c86ade7"
+  accessToken: "BQDABB-QhV-RiuHgz9vYz04jbfeRSK000GY_ZpvMP_rsV6yxZv9kQsx1tHOLQvM863i2nrFN6aj44N9iJmWwYNJmZV3v0F_N4M0mcXeGNt8_tqi33dj4WRLvzX8SymsyY1ISw3uTBZDi6V-1hY6pxh_0_uqpZY8yEkoQVDzGQurVGBImyfP9L4vVr45aYQO9zB4L-rAgCtl4respHdZoeJlDRAOes-vAlvH5VlSVXVzt"
+  refreshToken: "AQCOOm2kC3_DUXBkrTIQRCDQJdwOFzXjTx51iiWWdugpRwhOIYN8nxZa1j5EMuqesvHWJbhFMNj3RoXi0RIVl--kGVsiKZAkQE6335GfjuQAKhW_5YFjX7ZFn1sgkw-PnmE"
+

@@ -1,0 +1,76 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: magicmirror-config
+  namespace: suite
+data:
+  config.js: |
+    let config = {
+      address: "0.0.0.0",
+      port: 8080,
+      ipWhitelist: [],
+      language: "en",
+      timeFormat: 12,
+      units: "imperial",
+      customCss: "/data/custom.css", // Longhorn-backed, easy to tweak
+      modules: [
+        /* Top-left: clock + weather */
+        { module: "clock", position: "top_left", config: { displaySeconds: false, showPeriod: true, showDate: true } },
+        { module: "weather", position: "top_left", config: {
+            type: "current", location: "<CITY>", apiKey: "<OWM_API_KEY>"
+        }},
+        { module: "weather", position: "top_left", config: {
+            type: "forecast", location: "<CITY>", apiKey: "<OWM_API_KEY>", maxNumberOfDays: 5, showRainAmount: true
+        }},
+
+        /* Top-right: calendar */
+        { module: "calendar", position: "top_right",
+          config: {
+            colored: true, maximumEntries: 8,
+            calendars: [
+              { url: "<ICS_URL>", symbol: "calendar", color: "#9cd2ff" }
+            ]
+          }
+        },
+
+        /* Center: Spotify now playing */
+        { module: "MMM-NowPlayingOnSpotify", position: "middle_center",
+          config: {
+            clientID: "<SPOTIFY_CLIENT_ID>",
+            clientSecret: "<SPOTIFY_CLIENT_SECRET>",
+            accessToken: "<SPOTIFY_ACCESS_TOKEN>",
+            refreshToken: "<SPOTIFY_REFRESH_TOKEN>",
+            showCoverArt: true, useFadeAnimation: true
+          }
+        },
+
+        /* Right: Scrypted camera tile (HLS snapshot/live) */
+        { module: "MMM-iFrame", position: "right", config: {
+            url: "https://scrypted.suite.home.arpa/public/cameras/<YOUR_DOORBELL>/snapshot.jpg",
+            updateInterval: 10000, width: "420", height: "236", frameWidth: 0
+          }
+        },
+
+        /* Bottom bar: quick home scenes (via simple links or webhooks) */
+        { module: "MMM-Buttons", position: "bottom_bar",
+          config: {
+            buttons: [
+              { name: "Movie",  symbol: "film",    action: "https://homebridge.suite.home.arpa/api/webhook/scene/movie" },
+              { name: "Chill",  symbol: "music",   action: "https://homebridge.suite.home.arpa/api/webhook/scene/chill" },
+              { name: "Away",   symbol: "lock",    action: "https://homebridge.suite.home.arpa/api/webhook/scene/away"  }
+            ],
+            styled: true
+          }
+        },
+
+        /* Bottom bar: subtle news ticker */
+        { module: "newsfeed", position: "bottom_bar", config: {
+            feeds: [
+              { title: "Tech", url: "https://rss.nytimes.com/services/xml/rss/nyt/Technology.xml" },
+              { title: "World", url: "https://feeds.bbci.co.uk/news/world/rss.xml" }
+            ],
+            showSourceTitle: true, showPublishDate: false, broadcastNewsFeeds: true, broadcastNewsUpdates: true
+        }}
+      ]
+    };
+    if (typeof module !== "undefined") { module.exports = config; }

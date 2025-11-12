@@ -1,12 +1,18 @@
+# save as homebridge-restore.job.yaml
 apiVersion: batch/v1
 kind: Job
 metadata:
-  name: homebridge-restore
   namespace: suite
+  # Option A: fixed unique name per run
+  name: homebridge-restore-20251107
+  # Option B (alternative): let k8s append a random suffix
+  # generateName: homebridge-restore-
 spec:
+  backoffLimit: 0
+  ttlSecondsAfterFinished: 3600
   template:
     spec:
-      restartPolicy: OnFailure
+      restartPolicy: Never
       containers:
         - name: restore
           image: alpine:3.20
@@ -24,8 +30,18 @@ spec:
               tar -xzf "$LATEST" -C /homebridge
               echo "Restore complete."
           volumeMounts:
-            - { name: hb, mountPath: /homebridge }
+            - { name: hb,  mountPath: /homebridge }
             - { name: bkp, mountPath: /backups }
+          securityContext:
+            runAsUser: 0
+            runAsGroup: 0
       volumes:
-        - { name: hb,  persistentVolumeClaim: { claimName: homebridge-data-longhorn } }
-        - { name: bkp, persistentVolumeClaim: { claimName: homebridge-backups-longhorn } }
+        - name: hb
+          persistentVolumeClaim:
+            # TODO: set your data PVC name
+            claimName: homebridge-data
+        - name: bkp
+          persistentVolumeClaim:
+            # TODO: set your backups PVC name
+            claimName: homebridge-backups
+

@@ -1,0 +1,14 @@
+apiVersion: v1
+kind: Secret
+metadata:
+  name: spotify-credentials
+  namespace: {{ .Values.namespace | default "suite" }}
+  labels:
+    {{- include "mm.labels" . | nindent 4 }}
+type: Opaque
+stringData:
+  clientId: {{ required "Values.spotify.clientId is required" .Values.spotify.clientId | quote }}
+  clientSecret: {{ required "Values.spotify.clientSecret is required" .Values.spotify.clientSecret | quote }}
+  accessToken: {{ .Values.spotify.accessToken | default "" | quote }}
+  refreshToken: {{ .Values.spotify.refreshToken | default "" | quote }}
+

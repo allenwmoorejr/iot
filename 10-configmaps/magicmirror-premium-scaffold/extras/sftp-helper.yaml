@@ -1,0 +1,34 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mirror-content-sftp
+  namespace: suite
+spec:
+  replicas: 1
+  selector: { matchLabels: { app: mirror-content-sftp } }
+  template:
+    metadata: { labels: { app: mirror-content-sftp } }
+    spec:
+      containers:
+      - name: sftp
+        image: atmoz/sftp:latest
+        args: ["wayne:changeme:1000:100:/home/wayne/upload"]
+        ports: [{ containerPort: 22, name: ssh }]
+        volumeMounts:
+        - name: data
+          mountPath: /home/wayne/upload
+      volumes:
+      - name: data
+        persistentVolumeClaim: { claimName: magicmirror-data }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: mirror-content-sftp
+  namespace: suite
+spec:
+  selector: { app: mirror-content-sftp }
+  ports:
+  - name: ssh
+    port: 22
+    targetPort: 22

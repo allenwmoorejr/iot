@@ -1,0 +1,26 @@
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: magicmirror-app-ingress
+  namespace: suite
+spec:
+  podSelector:
+    matchLabels:
+      app: magicmirror-app
+  policyTypes: [Ingress]
+  ingress:
+  # Allow same-namespace clients (debug pods, sidecars, jobs)
+  - from:
+    - podSelector: {}
+    ports:
+    - protocol: TCP
+      port: 8080
+  # Allow Traefik controller pods in traefik namespace
+  - from:
+    - namespaceSelector:
+        matchLabels:
+          kubernetes.io/metadata.name: traefik
+    ports:
+    - protocol: TCP
+      port: 8080
+

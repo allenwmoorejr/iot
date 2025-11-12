@@ -1,0 +1,86 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: magicmirror-server
+  namespace: {{ .Values.namespace }}
+  labels:
+    {{- include "mm.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      app: magicmirror-server
+  template:
+    metadata:
+      labels:
+        app: magicmirror-server
+        {{- include "mm.labels" . | nindent 8 }}
+        {{- if .Values.podLabels }}
+{{ toYaml .Values.podLabels | indent 8 }}
+        {{- end }}
+    spec:
+      securityContext:
+        fsGroup: {{ .Values.securityContext.fsGroup }}
+        fsGroupChangePolicy: {{ .Values.securityContext.fsGroupChangePolicy | quote }}
+      initContainers:
+        - name: seed-modules
+          image: alpine/git:2.45.2
+          command: ["/bin/sh","-lc"]
+          args:
+            - >
+              set -e;
+              mkdir -p /opt/magic_mirror/modules;
+              cd /opt/magic_mirror/modules;
+              if [ ! -d MMM-NowPlayingOnSpotify ]; then git clone --depth=1 https://github.com/raywo/MMM-NowPlayingOnSpotify.git; fi;
+              if [ ! -d MMM-RTSPStream ]; then git clone --depth=1 https://github.com/shbatm/MMM-RTSPStream.git; fi;
+          volumeMounts:
+            - { name: mm-modules, mountPath: /opt/magic_mirror/modules }
+      containers:
+        - name: magicmirror
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          env:
+            - name: MM_ADDRESS
+              value: {{ .Values.env.MM_ADDRESS | quote }}
+            - name: MM_PORT
+              value: {{ .Values.env.MM_PORT | quote }}
+            - name: SPOTIFY_CLIENT_ID
+              valueFrom: { secretKeyRef: { name: spotify-credentials, key: clientId } }
+            - name: SPOTIFY_CLIENT_SECRET
+              valueFrom: { secretKeyRef: { name: spotify-credentials, key: clientSecret } }
+            - name: SPOTIFY_ACCESS_TOKEN
+              valueFrom: { secretKeyRef: { name: spotify-credentials, key: accessToken } }
+            - name: SPOTIFY_REFRESH_TOKEN
+              valueFrom: { secretKeyRef: { name: spotify-credentials, key: refreshToken } }
+          ports:
+            - name: ui
+              containerPort: 8080
+          readinessProbe:
+            httpGet: { path: "/", port: 8080 }
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            timeoutSeconds: 2
+            failureThreshold: 6
+          livenessProbe:
+            httpGet: { path: "/", port: 8080 }
+            initialDelaySeconds: 20
+            periodSeconds: 10
+            timeoutSeconds: 2
+            failureThreshold: 3
+          volumeMounts:
+            - { name: cfg,    mountPath: /opt/magic_mirror/config, readOnly: true }
+            - { name: theme,  mountPath: /opt/magic_mirror/css,    readOnly: true }
+            - { name: mm-modules, mountPath: /opt/magic_mirror/modules }
+            - { name: data,   mountPath: /data }
+          resources:
+{{ toYaml .Values.resources | indent 12 }}
+      volumes:
+        - name: cfg
+          configMap: { name: magicmirror-config, items: [ { key: config.js, path: config.js } ] }
+        - name: theme
+          configMap: { name: magicmirror-theme, items: [ { key: custom.css, path: custom.css } ] }
+        - name: mm-modules
+          emptyDir: {}
+        - name: data
+          persistentVolumeClaim:
+            claimName: {{ .Values.pvc.name }}
