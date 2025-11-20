@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>{{ dashboard_title or 'Pi Dash' }}</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}" />
+  <script>
+    window.CAR_DASH_REFRESH = {{ refresh_seconds | default(3) }};
+  </script>
+</head>
+<body>
+  <div class="dashboard" id="dashboard">
+    <header class="dashboard__header">
+      <div>
+        <h1 id="dashboard-title">{{ dashboard_title or 'Pi Dash' }}</h1>
+        <p class="dashboard__subtitle">Connected vehicle telemetry</p>
+      </div>
+      <div class="dashboard__status">
+        <span class="status__label">Speed</span>
+        <span class="status__value" id="speed-value">0</span>
+        <span class="status__units">km/h</span>
+      </div>
+    </header>
+    <main class="dashboard__content">
+      <section class="card" id="drivetrain-card">
+        <h2>Drivetrain</h2>
+        <div class="card__metrics">
+          <div class="metric">
+            <span class="metric__label">RPM</span>
+            <span class="metric__value" id="rpm-value">0</span>
+          </div>
+          <div class="metric">
+            <span class="metric__label">Battery</span>
+            <span class="metric__value" id="battery-value">0</span>
+            <span class="metric__units">V</span>
+          </div>
+          <div class="metric">
+            <span class="metric__label">Coolant</span>
+            <span class="metric__value" id="coolant-value">0</span>
+            <span class="metric__units">°C</span>
+          </div>
+        </div>
+      </section>
+      <section class="card" id="environment-card">
+        <h2>Environment</h2>
+        <div class="card__metrics">
+          <div class="metric">
+            <span class="metric__label">Cabin</span>
+            <span class="metric__value" id="cabin-value">--</span>
+            <span class="metric__units">°C</span>
+          </div>
+          <div class="metric">
+            <span class="metric__label">Outside</span>
+            <span class="metric__value" id="outside-value">--</span>
+            <span class="metric__units">°C</span>
+          </div>
+          <div class="metric">
+            <span class="metric__label">Humidity</span>
+            <span class="metric__value" id="humidity-value">--</span>
+            <span class="metric__units">%</span>
+          </div>
+        </div>
+      </section>
+      <section class="card" id="trip-card">
+        <h2>Trip</h2>
+        <div class="card__metrics">
+          <div class="metric">
+            <span class="metric__label">Fuel</span>
+            <span class="metric__value" id="fuel-value">--</span>
+            <span class="metric__units">%</span>
+          </div>
+          <div class="metric">
+            <span class="metric__label">Range</span>
+            <span class="metric__value" id="range-value">--</span>
+            <span class="metric__units">km</span>
+          </div>
+          <div class="metric">
+            <span class="metric__label">Efficiency</span>
+            <span class="metric__value" id="efficiency-value">--</span>
+            <span class="metric__units">L/100km</span>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+  <script src="{{ url_for('static', filename='js/dashboard.js') }}" defer></script>
+</body>
+</html>
