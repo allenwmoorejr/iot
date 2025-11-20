@@ -46,4 +46,4 @@ systemctl daemon-reload
 systemctl enable ${SERVICE_NAME}.service
 systemctl restart ${SERVICE_NAME}.service
 
-echo "Service installed. Configure your browser kiosk to open http://localhost:8000".
+echo "Service installed. Configure your browser kiosk to open http://localhost:8000 (e.g., Chromium --kiosk http://localhost:8000 on boot)."
