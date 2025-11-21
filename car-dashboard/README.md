@@ -55,6 +55,31 @@ Open `http://localhost:8000` in a browser to preview the dashboard.
 4. Add a systemd service to run the dashboard on boot (see `scripts/install-car-dash-service.sh` in this repository for an example service installer).
 5. Configure Chromium in kiosk mode or use `kivy`/`qt` if you prefer native rendering. The provided UI is web-based and works well in kiosk mode.
 
+### Auto-launching in Chromium kiosk mode
+On Raspberry Pi OS with the default desktop environment you can auto-start Chromium pointed at the dashboard:
+
+```bash
+sudo apt install -y chromium-browser
+mkdir -p ~/.config/lxsession/LXDE-pi
+cat <<'AUTOSTART' > ~/.config/lxsession/LXDE-pi/autostart
+@xset s off
+@xset -dpms
+@xset s noblank
+@chromium-browser --noerrdialogs --disable-infobars --kiosk http://localhost:8000
+AUTOSTART
+```
+
+Reboot after installing the systemd service and Chromium will launch directly into the dashboard at `http://localhost:8000`.
+
+### Improve touchscreen responsiveness
+If taps feel sluggish or require extra pressure, apply the bundled libinput tuning so the Pi's touchscreen accepts lighter touches. Run the helper from the repository root on the Raspberry Pi:
+
+```bash
+sudo ./scripts/reconfigure-touchscreen.sh
+```
+
+The script writes `/etc/udev/hwdb.d/99-car-touchscreen.hwdb` with more permissive pressure and jitter thresholds for the official 7" DSI panel (FT5406) and common Goodix/GT911 USB overlays. It then reloads the hardware database; reboot once to ensure the new attributes are active.
+
 ## Configuring data providers
 Set the `CAR_DASH_PROVIDER` environment variable to one of:
 - `mock` (default) – Generates synthetic but realistic-looking data for demos.
