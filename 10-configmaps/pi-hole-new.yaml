@@ -1,0 +1,38 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: pihole
+  namespace: suite
+spec:
+  template:
+    spec:
+      containers:
+      - name: pihole
+        env:
+        - name: PIHOLE_DNS_
+          value: "1.1.1.1;8.8.8.8"
+        - name: WEBPASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: pihole-secrets
+              key: webpassword
+        volumeMounts:
+        - name: custom-dns
+          mountPath: /etc/dnsmasq.d/99-local-dns.conf
+          subPath: 99-local-dns.conf
+      volumes:
+      - name: custom-dns
+        configMap:
+          name: pihole-local-dns
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: pihole-local-dns
+  namespace: suite
+data:
+  99-local-dns.conf: |
+    address=/homebridge.suite.home.arpa/192.168.50.242
+    address=/zigbee2mqtt.suite.home.arpa/192.168.50.242
+    address=/mirror.suite.home.arpa/192.168.50.242
+
